@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl
 
 	// Public routes (login va register sahifalari)
-	const publicRoutes = ['/login', '/register']
+	const publicRoutes = ['/login', '/register', '/']
 
 	// Protected routes (autentifikatsiya talab qilinadigan sahifalar)
 	const protectedRoutes = ['/dashboard', '/admin']
