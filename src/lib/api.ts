@@ -1,7 +1,7 @@
 import { ApiError, AuthResponse, TimeEntry, TimeEntryFormData } from '@/types'
 import Cookies from 'js-cookie'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 async function handleResponse<T>(response: Response): Promise<T> {
 	const data = await response.json()

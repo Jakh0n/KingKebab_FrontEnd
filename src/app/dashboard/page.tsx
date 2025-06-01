@@ -4,15 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-	addTimeEntry,
-	downloadMyPDF,
-	getMyTimeEntries,
-	logout,
-} from '@/lib/api'
+import { downloadMyPDF, getMyTimeEntries, logout } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { TimePicker } from '../../components/ui/time-picker'
 
 export default function DashboardPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -26,12 +22,13 @@ export default function DashboardPage() {
 		position: string
 	} | null>(null)
 	const [formData, setFormData] = useState<TimeEntryFormData>({
-		startTime: '09:00',
-		endTime: '21:00',
+		startTime: '',
+		endTime: '',
 		date: new Date().toISOString().split('T')[0],
 		description: '',
 		breakMinutes: 0,
 	})
+	const [selectedDate, setSelectedDate] = useState(new Date())
 	const router = useRouter()
 
 	useEffect(() => {
@@ -41,7 +38,6 @@ export default function DashboardPage() {
 			return
 		}
 
-		// JWT dan foydalanuvchi ma'lumotlarini olish
 		const payload = JSON.parse(atob(token.split('.')[1]))
 		setUserData({
 			id: payload.userId,
@@ -49,62 +45,59 @@ export default function DashboardPage() {
 			position: payload.position,
 		})
 
-		loadEntries()
-	}, [router])
+		async function loadEntries() {
+			try {
+				setLoading(true)
+				setError('')
+				console.log('Loading entries...')
+				const data = await getMyTimeEntries()
+				console.log('Loaded entries:', data)
 
-	async function loadEntries() {
-		try {
-			setLoading(true)
-			setError('')
-			console.log('Loading entries...')
-			const data = await getMyTimeEntries()
-			console.log('Loaded entries:', data)
+				if (!Array.isArray(data)) {
+					console.error('Loaded data is not an array:', data)
+					setError("Ma'lumotlar formati noto'g'ri")
+					return
+				}
 
-			// Ma'lumotlarni tekshirish
-			if (!Array.isArray(data)) {
-				console.error('Loaded data is not an array:', data)
-				setError("Ma'lumotlar formati noto'g'ri")
-				return
-			}
+				const validEntries = data.map(entry => ({
+					...entry,
+					date: new Date(entry.date).toISOString().split('T')[0],
+					startTime: new Date(entry.startTime).toISOString(),
+					endTime: new Date(entry.endTime).toISOString(),
+				}))
 
-			// Har bir yozuvni tekshirish
-			const validEntries = data.map(entry => ({
-				...entry,
-				date: new Date(entry.date).toISOString().split('T')[0],
-				startTime: new Date(entry.startTime).toISOString(),
-				endTime: new Date(entry.endTime).toISOString(),
-			}))
+				console.log('Processed entries:', validEntries)
+				setEntries(validEntries)
 
-			console.log('Processed entries:', validEntries)
-			setEntries(validEntries)
-
-			// Filterlangan ma'lumotlarni tekshirish
-			const filtered = validEntries.filter(entry => {
-				const entryDate = new Date(entry.date)
-				const entryMonth = entryDate.getMonth() + 1
-				const entryYear = entryDate.getFullYear()
-				const isMatching =
-					entryMonth === selectedMonth && entryYear === selectedYear
-				console.log('Filtering entry:', {
-					date: entry.date,
-					entryMonth,
-					selectedMonth,
-					entryYear,
-					selectedYear,
-					isMatching,
+				const filtered = validEntries.filter(entry => {
+					const entryDate = new Date(entry.date)
+					const entryMonth = entryDate.getMonth() + 1
+					const entryYear = entryDate.getFullYear()
+					const isMatching =
+						entryMonth === selectedMonth && entryYear === selectedYear
+					console.log('Filtering entry:', {
+						date: entry.date,
+						entryMonth,
+						selectedMonth,
+						entryYear,
+						selectedYear,
+						isMatching,
+					})
+					return isMatching
 				})
-				return isMatching
-			})
-			console.log('Filtered entries:', filtered)
-		} catch (err) {
-			console.error('Error loading entries:', err)
-			setError(
-				err instanceof Error ? err.message : 'Vaqtlarni yuklashda xatolik'
-			)
-		} finally {
-			setLoading(false)
+				console.log('Filtered entries:', filtered)
+			} catch (err) {
+				console.error('Error loading entries:', err)
+				setError(
+					err instanceof Error ? err.message : 'Vaqtlarni yuklashda xatolik'
+				)
+			} finally {
+				setLoading(false)
+			}
 		}
-	}
+
+		loadEntries()
+	}, [router, selectedMonth, selectedYear])
 
 	function handleLogout() {
 		logout()
@@ -117,36 +110,69 @@ export default function DashboardPage() {
 		setError('')
 
 		try {
-			// Vaqtlarni tekshirish
-			const startDate = new Date(`${formData.date}T${formData.startTime}`)
-			const endDate = new Date(`${formData.date}T${formData.endTime}`)
-
-			if (endDate < startDate) {
-				setError("Tugash vaqti boshlash vaqtidan katta bo'lishi kerak")
-				setLoading(false)
+			const token = localStorage.getItem('token')
+			if (!token) {
+				setError("Avtorizatsiyadan o'tilmagan")
 				return
 			}
 
-			await addTimeEntry({
-				...formData,
-				breakMinutes: parseInt(formData.breakMinutes.toString()) || 0,
+			// Vaqtlarni to'g'ri formatga o'tkazish
+			const [startHours, startMinutes] = formData.startTime.split(':')
+			const [endHours, endMinutes] = formData.endTime.split(':')
+
+			const startDate = new Date(selectedDate)
+			startDate.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0)
+
+			const endDate = new Date(selectedDate)
+			endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0, 0)
+
+			// Agar tugash vaqti boshlash vaqtidan kichik bo'lsa, keyingi kunga o'tkazamiz
+			if (parseInt(endHours) < parseInt(startHours)) {
+				endDate.setDate(endDate.getDate() + 1)
+			}
+
+			const response = await fetch('http://localhost:5000/api/time', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({
+					startTime: startDate.toISOString(),
+					endTime: endDate.toISOString(),
+					date: selectedDate.toISOString().split('T')[0],
+					description: formData.description,
+					breakMinutes: formData.breakMinutes,
+				}),
 			})
 
-			// Formani tozalash
+			if (!response.ok) {
+				const errorText = await response.text()
+				console.error('Server response:', errorText)
+				try {
+					const errorData = JSON.parse(errorText)
+					setError(errorData.message || 'Xatolik yuz berdi')
+				} catch {
+					setError(`Server xatosi: ${response.status}`)
+				}
+				return
+			}
+
+			const newEntry = await response.json()
+			setEntries([...entries, newEntry])
 			setFormData({
-				startTime: '09:00',
-				endTime: '21:00',
-				date: new Date().toISOString().split('T')[0],
+				startTime: '',
+				endTime: '',
 				description: '',
 				breakMinutes: 0,
+				date: new Date().toISOString().split('T')[0],
 			})
-
-			// Yangi ma'lumotlarni yuklash
-			await loadEntries()
-		} catch (err) {
-			console.error('Error adding time entry:', err)
+		} catch (error) {
+			console.error('Error:', error)
 			setError(
-				err instanceof Error ? err.message : "Vaqt qo'shishda xatolik yuz berdi"
+				error instanceof Error
+					? error.message
+					: "Vaqt qo'shishda xatolik yuz berdi"
 			)
 		} finally {
 			setLoading(false)
@@ -272,36 +298,28 @@ export default function DashboardPage() {
 									<Label className='text-sm'>Sana</Label>
 									<Input
 										type='date'
-										value={formData.date}
-										onChange={e =>
-											setFormData({ ...formData, date: e.target.value })
-										}
+										value={selectedDate.toISOString().split('T')[0]}
+										onChange={e => setSelectedDate(new Date(e.target.value))}
 										required
 										className='bg-[#1A1F2E] border-none text-white text-sm'
 									/>
 								</div>
 								<div className='space-y-2'>
 									<Label className='text-sm'>Boshlash vaqti</Label>
-									<Input
-										type='time'
+									<TimePicker
 										value={formData.startTime}
-										onChange={e =>
-											setFormData({ ...formData, startTime: e.target.value })
+										onChange={time =>
+											setFormData({ ...formData, startTime: time })
 										}
-										required
-										className='bg-[#1A1F2E] border-none text-white text-sm'
 									/>
 								</div>
 								<div className='space-y-2'>
 									<Label className='text-sm'>Tugatish vaqti</Label>
-									<Input
-										type='time'
+									<TimePicker
 										value={formData.endTime}
-										onChange={e =>
-											setFormData({ ...formData, endTime: e.target.value })
+										onChange={time =>
+											setFormData({ ...formData, endTime: time })
 										}
-										required
-										className='bg-[#1A1F2E] border-none text-white text-sm'
 									/>
 								</div>
 								<div className='space-y-2'>
@@ -388,12 +406,12 @@ export default function DashboardPage() {
 									</p>
 								) : error ? (
 									<p className='text-center text-red-500 text-sm'>{error}</p>
-								) : filteredEntries.length === 0 ? (
+								) : entries.length === 0 ? (
 									<p className='text-center text-gray-400 text-sm'>
 										Bu oyda vaqtlar kiritilmagan
 									</p>
 								) : (
-									filteredEntries.map(entry => (
+									entries.map(entry => (
 										<div
 											key={entry._id}
 											className='bg-[#1A1F2E] rounded p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0'
