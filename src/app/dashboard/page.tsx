@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { downloadMyPDF, getMyTimeEntries, logout } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { TimePicker } from '../../components/ui/time-picker'
 
 export default function DashboardPage() {
@@ -29,7 +30,37 @@ export default function DashboardPage() {
 		breakMinutes: 0,
 	})
 	const [selectedDate, setSelectedDate] = useState(new Date())
+	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 	const router = useRouter()
+
+	const loadEntries = useCallback(async () => {
+		try {
+			setLoading(true)
+			setError('')
+			const data = await getMyTimeEntries()
+
+			if (!Array.isArray(data)) {
+				setError("Ma'lumotlar formati noto'g'ri")
+				return
+			}
+
+			const validEntries = data.map(entry => ({
+				...entry,
+				date: new Date(entry.date).toISOString().split('T')[0],
+				startTime: new Date(entry.startTime).toISOString(),
+				endTime: new Date(entry.endTime).toISOString(),
+			}))
+
+			setEntries(validEntries)
+		} catch (err) {
+			console.error('Error loading entries:', err)
+			setError(
+				err instanceof Error ? err.message : 'Vaqtlarni yuklashda xatolik'
+			)
+		} finally {
+			setLoading(false)
+		}
+	}, [])
 
 	useEffect(() => {
 		const token = localStorage.getItem('token')
@@ -45,65 +76,83 @@ export default function DashboardPage() {
 			position: payload.position,
 		})
 
-		async function loadEntries() {
-			try {
-				setLoading(true)
-				setError('')
-				console.log('Loading entries...')
-				const data = await getMyTimeEntries()
-				console.log('Loaded entries:', data)
-
-				if (!Array.isArray(data)) {
-					console.error('Loaded data is not an array:', data)
-					setError("Ma'lumotlar formati noto'g'ri")
-					return
-				}
-
-				const validEntries = data.map(entry => ({
-					...entry,
-					date: new Date(entry.date).toISOString().split('T')[0],
-					startTime: new Date(entry.startTime).toISOString(),
-					endTime: new Date(entry.endTime).toISOString(),
-				}))
-
-				console.log('Processed entries:', validEntries)
-				setEntries(validEntries)
-
-				const filtered = validEntries.filter(entry => {
-					const entryDate = new Date(entry.date)
-					const entryMonth = entryDate.getMonth() + 1
-					const entryYear = entryDate.getFullYear()
-					const isMatching =
-						entryMonth === selectedMonth && entryYear === selectedYear
-					console.log('Filtering entry:', {
-						date: entry.date,
-						entryMonth,
-						selectedMonth,
-						entryYear,
-						selectedYear,
-						isMatching,
-					})
-					return isMatching
-				})
-				console.log('Filtered entries:', filtered)
-			} catch (err) {
-				console.error('Error loading entries:', err)
-				setError(
-					err instanceof Error ? err.message : 'Vaqtlarni yuklashda xatolik'
-				)
-			} finally {
-				setLoading(false)
-			}
-		}
-
 		loadEntries()
-	}, [router, selectedMonth, selectedYear])
+	}, [router, loadEntries])
+
+	// Oy o'zgarganda yangi ma'lumotlarni yuklash
+	useEffect(() => {
+		if (userData) {
+			loadEntries()
+		}
+	}, [selectedMonth, selectedYear, loadEntries, userData])
 
 	function handleLogout() {
 		logout()
 		router.push('/login')
 	}
 
+	// Tahrirlash funksiyasi
+	const handleEdit = (entry: TimeEntry) => {
+		setEditingEntry(entry)
+		const startTime = new Date(entry.startTime).toLocaleTimeString('en-US', {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		})
+		const endTime = new Date(entry.endTime).toLocaleTimeString('en-US', {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		})
+
+		setFormData({
+			startTime,
+			endTime,
+			date: new Date(entry.date).toISOString().split('T')[0],
+			description: entry.description,
+			breakMinutes: entry.breakMinutes,
+		})
+		setSelectedDate(new Date(entry.date))
+	}
+
+	// O'chirish funksiyasi
+	const handleDelete = async (entryId: string) => {
+		if (!confirm("Rostdan ham bu vaqt yozuvini o'chirmoqchimisiz?")) {
+			return
+		}
+
+		try {
+			const token = localStorage.getItem('token')
+			if (!token) {
+				setError("Avtorizatsiyadan o'tilmagan")
+				return
+			}
+
+			const response = await fetch(
+				`http://localhost:5000/api/time/${entryId}`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				}
+			)
+
+			if (!response.ok) {
+				throw new Error("O'chirishda xatolik yuz berdi")
+			}
+
+			// Ma'lumotlarni yangilash
+			setEntries(entries.filter(entry => entry._id !== entryId))
+		} catch (error) {
+			console.error('Error:', error)
+			setError(
+				error instanceof Error ? error.message : "O'chirishda xatolik yuz berdi"
+			)
+		}
+	}
+
+	// Submit funksiyasini yangilash
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
 		setLoading(true)
@@ -131,8 +180,14 @@ export default function DashboardPage() {
 				endDate.setDate(endDate.getDate() + 1)
 			}
 
-			const response = await fetch('http://localhost:5000/api/time', {
-				method: 'POST',
+			const url = editingEntry
+				? `http://localhost:5000/api/time/${editingEntry._id}`
+				: 'http://localhost:5000/api/time'
+
+			const method = editingEntry ? 'PUT' : 'POST'
+
+			const response = await fetch(url, {
+				method,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`,
@@ -158,8 +213,19 @@ export default function DashboardPage() {
 				return
 			}
 
-			const newEntry = await response.json()
-			setEntries([...entries, newEntry])
+			const updatedEntry = await response.json()
+
+			if (editingEntry) {
+				setEntries(
+					entries.map(entry =>
+						entry._id === editingEntry._id ? updatedEntry : entry
+					)
+				)
+			} else {
+				setEntries([...entries, updatedEntry])
+			}
+
+			// Formani tozalash
 			setFormData({
 				startTime: '',
 				endTime: '',
@@ -167,6 +233,7 @@ export default function DashboardPage() {
 				breakMinutes: 0,
 				date: new Date().toISOString().split('T')[0],
 			})
+			setEditingEntry(null)
 		} catch (error) {
 			console.error('Error:', error)
 			setError(
@@ -201,9 +268,10 @@ export default function DashboardPage() {
 	const filteredEntries = entries
 		.filter(entry => {
 			const entryDate = new Date(entry.date)
-			const entryMonth = entryDate.getMonth() + 1
-			const entryYear = entryDate.getFullYear()
-			return entryMonth === selectedMonth && entryYear === selectedYear
+			return (
+				entryDate.getMonth() + 1 === selectedMonth &&
+				entryDate.getFullYear() === selectedYear
+			)
 		})
 		.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
@@ -290,7 +358,7 @@ export default function DashboardPage() {
 				<Card className='bg-[#0E1422] border-none text-white'>
 					<div className='p-4 sm:p-6'>
 						<h2 className='text-lg sm:text-xl mb-4'>
-							Yangi vaqt qo&apos;shish
+							{editingEntry ? 'Vaqtni tahrirlash' : "Yangi vaqt qo'shish"}
 						</h2>
 						<form onSubmit={handleSubmit} className='space-y-4'>
 							<div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
@@ -355,8 +423,30 @@ export default function DashboardPage() {
 								disabled={loading}
 								className='w-full sm:w-auto bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0]'
 							>
-								{loading ? 'Saqlanmoqda...' : 'Saqlash'}
+								{loading
+									? 'Saqlanmoqda...'
+									: editingEntry
+									? 'Yangilash'
+									: 'Saqlash'}
 							</Button>
+							{editingEntry && (
+								<Button
+									type='button'
+									onClick={() => {
+										setEditingEntry(null)
+										setFormData({
+											startTime: '',
+											endTime: '',
+											description: '',
+											breakMinutes: 0,
+											date: new Date().toISOString().split('T')[0],
+										})
+									}}
+									className='ml-2 bg-gray-600 hover:bg-gray-700'
+								>
+									Bekor qilish
+								</Button>
+							)}
 							{error && <p className='text-red-500 text-sm'>{error}</p>}
 						</form>
 					</div>
@@ -406,12 +496,12 @@ export default function DashboardPage() {
 									</p>
 								) : error ? (
 									<p className='text-center text-red-500 text-sm'>{error}</p>
-								) : entries.length === 0 ? (
+								) : filteredEntries.length === 0 ? (
 									<p className='text-center text-gray-400 text-sm'>
 										Bu oyda vaqtlar kiritilmagan
 									</p>
 								) : (
-									entries.map(entry => (
+									filteredEntries.map(entry => (
 										<div
 											key={entry._id}
 											className='bg-[#1A1F2E] rounded p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0'
@@ -432,9 +522,23 @@ export default function DashboardPage() {
 													<p>Tanaffus: {entry.breakMinutes} daqiqa</p>
 												</div>
 											</div>
-											<p className='font-bold text-lg sm:text-xl self-end sm:self-auto'>
-												{entry.hours.toFixed(1)} soat
-											</p>
+											<div className='flex items-center gap-2'>
+												<p className='font-bold text-lg sm:text-xl'>
+													{entry.hours.toFixed(1)} soat
+												</p>
+												<Button
+													onClick={() => handleEdit(entry)}
+													className='p-2 h-8 w-8 bg-blue-600 hover:bg-blue-700'
+												>
+													<Pencil size={16} />
+												</Button>
+												<Button
+													onClick={() => handleDelete(entry._id)}
+													className='p-2 h-8 w-8 bg-red-600 hover:bg-red-700'
+												>
+													<Trash2 size={16} />
+												</Button>
+											</div>
 										</div>
 									))
 								)}
