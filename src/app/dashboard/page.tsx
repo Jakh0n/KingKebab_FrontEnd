@@ -300,15 +300,15 @@ export default function DashboardPage() {
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
-			<div className='max-w-4xl mx-auto space-y-4 sm:space-y-6'>
+			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
 				{/* Header */}
-				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0'>
+				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
 					<div>
-						<h1 className='text-xl sm:text-2xl font-bold text-white'>
+						<h1 className='text-lg sm:text-2xl font-bold text-white'>
 							Dashboard
 						</h1>
 						{userData && (
-							<p className='text-gray-400'>
+							<p className='text-sm sm:text-base text-gray-400'>
 								{userData.username} -{' '}
 								{userData.position === 'worker' ? 'Ishchi' : 'Rider'}
 							</p>
@@ -316,7 +316,7 @@ export default function DashboardPage() {
 					</div>
 					<Button
 						onClick={handleLogout}
-						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90'
+						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm'
 					>
 						Chiqish
 					</Button>
@@ -324,30 +324,30 @@ export default function DashboardPage() {
 
 				{/* Statistika */}
 				<div className='grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4'>
-					<Card className='bg-[#0E1422] border-none text-white p-3 sm:p-4'>
-						<p className='text-gray-400 text-xs sm:text-sm'>Jami soatlar</p>
-						<p className='text-[#4E7BEE] text-lg sm:text-xl font-bold'>
+					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
+						<p className='text-xs sm:text-sm text-gray-400'>Jami soatlar</p>
+						<p className='text-base sm:text-xl font-bold text-[#4E7BEE]'>
 							{stats.totalHours.toFixed(1)} soat
 						</p>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-3 sm:p-4'>
-						<p className='text-gray-400 text-xs sm:text-sm'>Oddiy kunlar</p>
-						<p className='text-[#4CC4C0] text-lg sm:text-xl font-bold'>
+					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
+						<p className='text-xs sm:text-sm text-gray-400'>Oddiy kunlar</p>
+						<p className='text-base sm:text-xl font-bold text-[#4CC4C0]'>
 							{stats.regularDays} kun
 						</p>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-3 sm:p-4'>
-						<p className='text-gray-400 text-xs sm:text-sm'>
+					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
+						<p className='text-xs sm:text-sm text-gray-400'>
 							Qo&apos;shimcha kunlar
 						</p>
-						<p className='text-[#9B5DE5] text-lg sm:text-xl font-bold'>
+						<p className='text-base sm:text-xl font-bold text-[#9B5DE5]'>
 							{stats.overtimeDays} kun
 						</p>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-3 sm:p-4 flex items-center justify-center'>
+					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
 						<Button
 							onClick={handleDownloadPDF}
-							className='bg-[#00875A] hover:bg-[#00875A]/90 w-full text-xs sm:text-base'
+							className='w-full bg-[#00875A] hover:bg-[#00875A]/90 text-xs sm:text-sm h-8 sm:h-10'
 						>
 							PDF yuklab olish
 						</Button>
@@ -356,24 +356,24 @@ export default function DashboardPage() {
 
 				{/* Vaqt qo'shish formasi */}
 				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-4 sm:p-6'>
-						<h2 className='text-lg sm:text-xl mb-4'>
+					<div className='p-3 sm:p-6'>
+						<h2 className='text-base sm:text-xl mb-3 sm:mb-4'>
 							{editingEntry ? 'Vaqtni tahrirlash' : "Yangi vaqt qo'shish"}
 						</h2>
-						<form onSubmit={handleSubmit} className='space-y-4'>
-							<div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
-								<div className='space-y-2'>
-									<Label className='text-sm'>Sana</Label>
+						<form onSubmit={handleSubmit} className='space-y-3 sm:space-y-4'>
+							<div className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4'>
+								<div className='space-y-1 sm:space-y-2'>
+									<Label className='text-xs sm:text-sm'>Sana</Label>
 									<Input
 										type='date'
 										value={selectedDate.toISOString().split('T')[0]}
 										onChange={e => setSelectedDate(new Date(e.target.value))}
 										required
-										className='bg-[#1A1F2E] border-none text-white text-sm'
+										className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
 									/>
 								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm'>Boshlash vaqti</Label>
+								<div className='space-y-1 sm:space-y-2'>
+									<Label className='text-xs sm:text-sm'>Boshlash vaqti</Label>
 									<TimePicker
 										value={formData.startTime}
 										onChange={time =>
@@ -381,8 +381,8 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm'>Tugatish vaqti</Label>
+								<div className='space-y-1 sm:space-y-2'>
+									<Label className='text-xs sm:text-sm'>Tugatish vaqti</Label>
 									<TimePicker
 										value={formData.endTime}
 										onChange={time =>
@@ -390,8 +390,10 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm'>Tanaffus (daqiqada)</Label>
+								<div className='space-y-1 sm:space-y-2'>
+									<Label className='text-xs sm:text-sm'>
+										Tanaffus (daqiqada)
+									</Label>
 									<Input
 										type='number'
 										min='0'
@@ -402,12 +404,12 @@ export default function DashboardPage() {
 												breakMinutes: parseInt(e.target.value) || 0,
 											})
 										}
-										className='bg-[#1A1F2E] border-none text-white text-sm'
+										className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
 									/>
 								</div>
 							</div>
-							<div className='space-y-2'>
-								<Label className='text-sm'>Izoh</Label>
+							<div className='space-y-1 sm:space-y-2'>
+								<Label className='text-xs sm:text-sm'>Izoh</Label>
 								<Input
 									value={formData.description}
 									onChange={e =>
@@ -415,55 +417,59 @@ export default function DashboardPage() {
 									}
 									required
 									placeholder='Ish haqida qisqacha izoh'
-									className='bg-[#1A1F2E] border-none text-white text-sm'
+									className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
 								/>
 							</div>
-							<Button
-								type='submit'
-								disabled={loading}
-								className='w-full sm:w-auto bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0]'
-							>
-								{loading
-									? 'Saqlanmoqda...'
-									: editingEntry
-									? 'Yangilash'
-									: 'Saqlash'}
-							</Button>
-							{editingEntry && (
+							<div className='flex gap-2 pt-2'>
 								<Button
-									type='button'
-									onClick={() => {
-										setEditingEntry(null)
-										setFormData({
-											startTime: '',
-											endTime: '',
-											description: '',
-											breakMinutes: 0,
-											date: new Date().toISOString().split('T')[0],
-										})
-									}}
-									className='ml-2 bg-gray-600 hover:bg-gray-700'
+									type='submit'
+									disabled={loading}
+									className='flex-1 sm:flex-none bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0] text-xs sm:text-sm h-8 sm:h-10'
 								>
-									Bekor qilish
+									{loading
+										? 'Saqlanmoqda...'
+										: editingEntry
+										? 'Yangilash'
+										: 'Saqlash'}
 								</Button>
+								{editingEntry && (
+									<Button
+										type='button'
+										onClick={() => {
+											setEditingEntry(null)
+											setFormData({
+												startTime: '',
+												endTime: '',
+												description: '',
+												breakMinutes: 0,
+												date: new Date().toISOString().split('T')[0],
+											})
+										}}
+										className='flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm h-8 sm:h-10'
+									>
+										Bekor qilish
+									</Button>
+								)}
+							</div>
+							{error && (
+								<p className='text-red-500 text-xs sm:text-sm'>{error}</p>
 							)}
-							{error && <p className='text-red-500 text-sm'>{error}</p>}
 						</form>
 					</div>
 				</Card>
 
 				{/* Vaqtlar ro'yxati */}
 				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-4 sm:p-6'>
-						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
-							<h2 className='text-lg sm:text-xl'>Mening vaqtlarim</h2>
-							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4'>
-								<div className='flex items-center gap-2'>
-									<Label className='text-sm'>Oy:</Label>
+					<div className='p-3 sm:p-6'>
+						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-4 sm:mb-6'>
+							<h2 className='text-base sm:text-xl'>Mening vaqtlarim</h2>
+							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto'>
+								<div className='flex items-center gap-2 w-full sm:w-auto'>
+									<Label className='text-xs sm:text-sm min-w-[30px]'>Oy:</Label>
 									<select
 										value={selectedMonth}
 										onChange={e => setSelectedMonth(parseInt(e.target.value))}
-										className='bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-sm'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10'
 									>
 										{months.map(month => (
 											<option key={month.value} value={month.value}>
@@ -472,12 +478,14 @@ export default function DashboardPage() {
 										))}
 									</select>
 								</div>
-								<div className='flex items-center gap-2'>
-									<Label className='text-sm'>Yil:</Label>
+								<div className='flex items-center gap-2 w-full sm:w-auto'>
+									<Label className='text-xs sm:text-sm min-w-[30px]'>
+										Yil:
+									</Label>
 									<select
 										value={selectedYear}
 										onChange={e => setSelectedYear(parseInt(e.target.value))}
-										className='bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-sm'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10'
 									>
 										{[2023, 2024, 2025].map(year => (
 											<option key={year} value={year}>
@@ -489,55 +497,61 @@ export default function DashboardPage() {
 							</div>
 						</div>
 						<div className='h-[300px] sm:h-[400px] overflow-y-auto custom-scrollbar pr-2'>
-							<div className='space-y-3 sm:space-y-4'>
+							<div className='space-y-2 sm:space-y-4'>
 								{loading ? (
-									<p className='text-center text-gray-400 text-sm'>
+									<p className='text-center text-gray-400 text-xs sm:text-sm'>
 										Yuklanmoqda...
 									</p>
 								) : error ? (
-									<p className='text-center text-red-500 text-sm'>{error}</p>
+									<p className='text-center text-red-500 text-xs sm:text-sm'>
+										{error}
+									</p>
 								) : filteredEntries.length === 0 ? (
-									<p className='text-center text-gray-400 text-sm'>
+									<p className='text-center text-gray-400 text-xs sm:text-sm'>
 										Bu oyda vaqtlar kiritilmagan
 									</p>
 								) : (
 									filteredEntries.map(entry => (
 										<div
 											key={entry._id}
-											className='bg-[#1A1F2E] rounded p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0'
+											className='bg-[#1A1F2E] rounded-lg p-3 sm:p-4'
 										>
-											<div>
-												<p className='font-medium text-sm sm:text-base'>
-													{entry.description}
-												</p>
-												<div className='text-xs sm:text-sm text-gray-400 space-y-1'>
-													<p>
-														Sana:{' '}
-														{new Date(entry.date).toLocaleDateString('uz-UZ')}
+											<div className='flex flex-col sm:flex-row justify-between gap-2 sm:gap-4'>
+												<div className='flex-1'>
+													<p className='font-medium text-sm sm:text-base mb-1'>
+														{entry.description}
 													</p>
-													<p>
-														Vaqt: {formatTime(entry.startTime)} -{' '}
-														{formatTime(entry.endTime)}
-													</p>
-													<p>Tanaffus: {entry.breakMinutes} daqiqa</p>
+													<div className='text-xs text-gray-400 space-y-0.5'>
+														<p>
+															Sana:{' '}
+															{new Date(entry.date).toLocaleDateString('uz-UZ')}
+														</p>
+														<p>
+															Vaqt: {formatTime(entry.startTime)} -{' '}
+															{formatTime(entry.endTime)}
+														</p>
+														<p>Tanaffus: {entry.breakMinutes} daqiqa</p>
+													</div>
 												</div>
-											</div>
-											<div className='flex items-center gap-2'>
-												<p className='font-bold text-lg sm:text-xl'>
-													{entry.hours.toFixed(1)} soat
-												</p>
-												<Button
-													onClick={() => handleEdit(entry)}
-													className='p-2 h-8 w-8 bg-blue-600 hover:bg-blue-700'
-												>
-													<Pencil size={16} />
-												</Button>
-												<Button
-													onClick={() => handleDelete(entry._id)}
-													className='p-2 h-8 w-8 bg-red-600 hover:bg-red-700'
-												>
-													<Trash2 size={16} />
-												</Button>
+												<div className='flex items-center gap-2 self-end sm:self-center'>
+													<p className='font-bold text-base sm:text-lg text-[#4CC4C0]'>
+														{entry.hours.toFixed(1)} soat
+													</p>
+													<div className='flex gap-1'>
+														<Button
+															onClick={() => handleEdit(entry)}
+															className='p-1.5 h-7 w-7 bg-blue-600 hover:bg-blue-700'
+														>
+															<Pencil size={14} />
+														</Button>
+														<Button
+															onClick={() => handleDelete(entry._id)}
+															className='p-1.5 h-7 w-7 bg-red-600 hover:bg-red-700'
+														>
+															<Trash2 size={14} />
+														</Button>
+													</div>
+												</div>
 											</div>
 										</div>
 									))

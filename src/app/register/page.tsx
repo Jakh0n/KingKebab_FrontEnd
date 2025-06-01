@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { register } from '@/lib/api'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
@@ -14,10 +15,12 @@ export default function RegisterPage() {
 	const [password, setPassword] = useState('')
 	const [position, setPosition] = useState<'worker' | 'rider'>('worker')
 	const [error, setError] = useState('')
+	const [isLoading, setIsLoading] = useState(false)
 	const router = useRouter()
 
 	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault()
+		setIsLoading(true)
 		try {
 			const response = await register(username, password, position)
 			localStorage.setItem('token', response.token)
@@ -25,6 +28,8 @@ export default function RegisterPage() {
 			router.push('/dashboard')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Registration failed')
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
@@ -48,6 +53,7 @@ export default function RegisterPage() {
 									setUsername(e.target.value)
 								}
 								required
+								disabled={isLoading}
 							/>
 						</div>
 						<div className='space-y-2'>
@@ -61,6 +67,7 @@ export default function RegisterPage() {
 									setPassword(e.target.value)
 								}
 								required
+								disabled={isLoading}
 							/>
 						</div>
 						<div className='space-y-2'>
@@ -76,6 +83,7 @@ export default function RegisterPage() {
 											setPosition(e.target.value as 'worker' | 'rider')
 										}
 										className='form-radio'
+										disabled={isLoading}
 									/>
 									<span>Ishchi</span>
 								</label>
@@ -89,14 +97,22 @@ export default function RegisterPage() {
 											setPosition(e.target.value as 'worker' | 'rider')
 										}
 										className='form-radio'
+										disabled={isLoading}
 									/>
 									<span>Rider</span>
 								</label>
 							</div>
 						</div>
 						{error && <p className='text-red-500 text-sm'>{error}</p>}
-						<Button type='submit' className='w-full'>
-							Ro&apos;yxatdan o&apos;tish
+						<Button type='submit' className='w-full' disabled={isLoading}>
+							{isLoading ? (
+								<>
+									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+									Ro&apos;yxatdan o&apos;tish...
+								</>
+							) : (
+								'Ro&apos;yxatdan o&apos;tish'
+							)}
 						</Button>
 						<p className='text-center text-sm text-gray-500'>
 							Akkountingiz bormi?{' '}

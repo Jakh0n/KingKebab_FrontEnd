@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login } from '@/lib/api'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
@@ -13,10 +14,12 @@ export default function LoginPage() {
 	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')
 	const [error, setError] = useState('')
+	const [isLoading, setIsLoading] = useState(false)
 	const router = useRouter()
 
 	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault()
+		setIsLoading(true)
 		try {
 			const response = await login(username, password)
 			localStorage.setItem('token', response.token)
@@ -33,6 +36,8 @@ export default function LoginPage() {
 			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Login failed')
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
@@ -54,6 +59,7 @@ export default function LoginPage() {
 									setUsername(e.target.value)
 								}
 								required
+								disabled={isLoading}
 							/>
 						</div>
 						<div className='space-y-2'>
@@ -67,11 +73,19 @@ export default function LoginPage() {
 									setPassword(e.target.value)
 								}
 								required
+								disabled={isLoading}
 							/>
 						</div>
 						{error && <p className='text-red-500 text-sm'>{error}</p>}
-						<Button type='submit' className='w-full'>
-							Kirish
+						<Button type='submit' className='w-full' disabled={isLoading}>
+							{isLoading ? (
+								<>
+									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+									Kirish...
+								</>
+							) : (
+								'Kirish'
+							)}
 						</Button>
 						<p className='text-center text-sm text-gray-500'>
 							Akkountingiz yo&apos;qmi?{' '}
