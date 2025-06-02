@@ -129,7 +129,7 @@ export default function DashboardPage() {
 			}
 
 			const response = await fetch(
-				`http://localhost:5000/api/time/${entryId}`,
+				`${process.env.NEXT_PUBLIC_API_URL}/time/${entryId}`,
 				{
 					method: 'DELETE',
 					headers: {
