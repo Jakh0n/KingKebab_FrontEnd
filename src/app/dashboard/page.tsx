@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { downloadMyPDF, getMyTimeEntries, logout } from '@/lib/api'
+import {
+	addTimeEntry,
+	deleteTimeEntry,
+	downloadMyPDF,
+	getMyTimeEntries,
+	logout,
+	updateTimeEntry,
+} from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -122,26 +129,7 @@ export default function DashboardPage() {
 		}
 
 		try {
-			const token = localStorage.getItem('token')
-			if (!token) {
-				setError("Avtorizatsiyadan o'tilmagan")
-				return
-			}
-
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL}/time/${entryId}`,
-				{
-					method: 'DELETE',
-					headers: {
-						Authorization: `Bearer ${token}`,
-					},
-				}
-			)
-
-			if (!response.ok) {
-				throw new Error("O'chirishda xatolik yuz berdi")
-			}
-
+			await deleteTimeEntry(entryId)
 			// Ma'lumotlarni yangilash
 			setEntries(entries.filter(entry => entry._id !== entryId))
 		} catch (error) {
@@ -159,12 +147,6 @@ export default function DashboardPage() {
 		setError('')
 
 		try {
-			const token = localStorage.getItem('token')
-			if (!token) {
-				setError("Avtorizatsiyadan o'tilmagan")
-				return
-			}
-
 			// Vaqtlarni to'g'ri formatga o'tkazish
 			const [startHours, startMinutes] = formData.startTime.split(':')
 			const [endHours, endMinutes] = formData.endTime.split(':')
@@ -180,48 +162,24 @@ export default function DashboardPage() {
 				endDate.setDate(endDate.getDate() + 1)
 			}
 
-			const url = editingEntry
-				? `http://localhost:5000/api/time/${editingEntry._id}`
-				: 'http://localhost:5000/api/time'
-
-			const method = editingEntry ? 'PUT' : 'POST'
-
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({
-					startTime: startDate.toISOString(),
-					endTime: endDate.toISOString(),
-					date: selectedDate.toISOString().split('T')[0],
-					description: formData.description,
-					breakMinutes: formData.breakMinutes,
-				}),
-			})
-
-			if (!response.ok) {
-				const errorText = await response.text()
-				console.error('Server response:', errorText)
-				try {
-					const errorData = JSON.parse(errorText)
-					setError(errorData.message || 'Xatolik yuz berdi')
-				} catch {
-					setError(`Server xatosi: ${response.status}`)
-				}
-				return
+			const data = {
+				startTime: startDate.toISOString(),
+				endTime: endDate.toISOString(),
+				date: selectedDate.toISOString().split('T')[0],
+				description: formData.description,
+				breakMinutes: formData.breakMinutes,
 			}
 
-			const updatedEntry = await response.json()
-
+			let updatedEntry: TimeEntry
 			if (editingEntry) {
+				updatedEntry = await updateTimeEntry(editingEntry._id, data)
 				setEntries(
 					entries.map(entry =>
 						entry._id === editingEntry._id ? updatedEntry : entry
 					)
 				)
 			} else {
+				updatedEntry = await addTimeEntry(data)
 				setEntries([...entries, updatedEntry])
 			}
 

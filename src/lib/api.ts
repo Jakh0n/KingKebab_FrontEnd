@@ -187,6 +187,47 @@ export async function downloadMyPDF(month: number, year: number) {
 	document.body.removeChild(a)
 }
 
+export async function deleteTimeEntry(entryId: string): Promise<void> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('No token found')
+
+	const response = await fetch(`${API_URL}/time/${entryId}`, {
+		method: 'DELETE',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+
+	if (!response.ok) {
+		throw new Error("O'chirishda xatolik yuz berdi")
+	}
+}
+
+export async function updateTimeEntry(
+	entryId: string,
+	data: {
+		startTime: string
+		endTime: string
+		date: string
+		description: string
+		breakMinutes: number
+	}
+): Promise<TimeEntry> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('No token found')
+
+	const response = await fetch(`${API_URL}/time/${entryId}`, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+
+	return handleResponse<TimeEntry>(response)
+}
+
 // Logout funksiyasini qo'shamiz
 export function logout() {
 	localStorage.removeItem('token')
