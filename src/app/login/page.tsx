@@ -25,7 +25,7 @@ export default function LoginPage() {
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
 
-			// JWT tokenni decode qilib, isAdmin ni tekshiramiz
+			// Decode JWT token and check isAdmin
 			const token = response.token
 			const payload = JSON.parse(atob(token.split('.')[1]))
 
@@ -45,15 +45,15 @@ export default function LoginPage() {
 		<main className='flex min-h-screen items-center justify-center p-4 bg-gray-50'>
 			<Card className='w-full max-w-md'>
 				<CardHeader>
-					<CardTitle className='text-2xl text-center'>Tizimga kirish</CardTitle>
+					<CardTitle className='text-2xl text-center'>Login</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={handleSubmit} className='space-y-4'>
 						<div className='space-y-2'>
-							<Label htmlFor='username'>Foydalanuvchi nomi</Label>
+							<Label htmlFor='username'>Username</Label>
 							<Input
 								id='username'
-								placeholder='Foydalanuvchi nomini kiriting'
+								placeholder='Enter your username'
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
@@ -63,11 +63,11 @@ export default function LoginPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label htmlFor='password'>Parol</Label>
+							<Label htmlFor='password'>Password</Label>
 							<Input
 								id='password'
 								type='password'
-								placeholder='Parolni kiriting'
+								placeholder='Enter your password'
 								value={password}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPassword(e.target.value)
@@ -81,16 +81,16 @@ export default function LoginPage() {
 							{isLoading ? (
 								<>
 									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-									Kirish...
+									Logging in...
 								</>
 							) : (
-								'Kirish'
+								'Login'
 							)}
 						</Button>
 						<p className='text-center text-sm text-gray-500'>
-							Akkountingiz yo&apos;qmi?{' '}
+							Don&apos;t have an account?{' '}
 							<Link href='/register' className='text-blue-600 hover:underline'>
-								Ro&apos;yxatdan o&apos;tish
+								Register
 							</Link>
 						</p>
 					</form>

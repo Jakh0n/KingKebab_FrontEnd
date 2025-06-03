@@ -6,7 +6,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 async function handleResponse<T>(response: Response): Promise<T> {
 	const data = await response.json()
 	if (!response.ok) {
-		throw new Error((data as ApiError).message)
+		const errorMessage = (data as ApiError).message || "Noma'lum xato yuz berdi"
+		throw new Error(errorMessage)
 	}
 	return data as T
 }
@@ -60,11 +61,16 @@ export async function addTimeEntry(
 	const token = localStorage.getItem('token')
 	if (!token) throw new Error('No token found')
 
-	console.log('Sending data:', {
+	// Vaqtlarni to'g'ri formatga o'tkazish
+	const formattedData = {
 		...data,
-		startTime: `${data.date}T${data.startTime}:00`,
-		endTime: `${data.date}T${data.endTime}:00`,
-	})
+		startTime: data.startTime,
+		endTime: data.endTime,
+		date: data.date,
+		breakMinutes: parseInt(data.breakMinutes.toString()) || 0,
+	}
+
+	console.log('Sending data:', formattedData)
 
 	const response = await fetch(`${API_URL}/time`, {
 		method: 'POST',
@@ -72,11 +78,7 @@ export async function addTimeEntry(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`,
 		},
-		body: JSON.stringify({
-			...data,
-			startTime: `${data.date}T${data.startTime}:00`,
-			endTime: `${data.date}T${data.endTime}:00`,
-		}),
+		body: JSON.stringify(formattedData),
 	})
 
 	return handleResponse<TimeEntry>(response)

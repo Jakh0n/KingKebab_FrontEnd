@@ -37,17 +37,15 @@ export default function RegisterPage() {
 		<main className='flex min-h-screen items-center justify-center p-4 bg-gray-50'>
 			<Card className='w-full max-w-md'>
 				<CardHeader>
-					<CardTitle className='text-2xl text-center'>
-						Ro&apos;yxatdan o&apos;tish
-					</CardTitle>
+					<CardTitle className='text-2xl text-center'>Register</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={handleSubmit} className='space-y-4'>
 						<div className='space-y-2'>
-							<Label htmlFor='username'>Foydalanuvchi nomi</Label>
+							<Label htmlFor='username'>Username</Label>
 							<Input
 								id='username'
-								placeholder='Foydalanuvchi nomini kiriting'
+								placeholder='Enter your username'
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
@@ -57,11 +55,11 @@ export default function RegisterPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label htmlFor='password'>Parol</Label>
+							<Label htmlFor='password'>Password</Label>
 							<Input
 								id='password'
 								type='password'
-								placeholder='Parolni kiriting'
+								placeholder='Enter your password'
 								value={password}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPassword(e.target.value)
@@ -71,7 +69,7 @@ export default function RegisterPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label>Lavozim</Label>
+							<Label>Position</Label>
 							<div className='flex space-x-4'>
 								<label className='flex items-center space-x-2'>
 									<input
@@ -85,7 +83,7 @@ export default function RegisterPage() {
 										className='form-radio'
 										disabled={isLoading}
 									/>
-									<span>Ishchi</span>
+									<span>Worker</span>
 								</label>
 								<label className='flex items-center space-x-2'>
 									<input
@@ -108,16 +106,16 @@ export default function RegisterPage() {
 							{isLoading ? (
 								<>
 									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-									Ro&apos;yxatdan o&apos;tish...
+									Registering...
 								</>
 							) : (
-								'Ro&apos;yxatdan o&apos;tish'
+								'Register'
 							)}
 						</Button>
 						<p className='text-center text-sm text-gray-500'>
-							Akkountingiz bormi?{' '}
+							Already have an account?{' '}
 							<Link href='/login' className='text-blue-600 hover:underline'>
-								Kirish
+								Login
 							</Link>
 						</p>
 					</form>

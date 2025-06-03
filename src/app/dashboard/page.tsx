@@ -147,19 +147,37 @@ export default function DashboardPage() {
 		setError('')
 
 		try {
+			if (!formData.startTime || !formData.endTime) {
+				throw new Error('Boshlash va tugatish vaqtlarini kiriting')
+			}
+
 			// Vaqtlarni to'g'ri formatga o'tkazish
 			const [startHours, startMinutes] = formData.startTime.split(':')
 			const [endHours, endMinutes] = formData.endTime.split(':')
 
+			// Boshlang'ich sana obyektini yaratish
 			const startDate = new Date(selectedDate)
 			startDate.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0)
 
+			// Tugash sana obyektini yaratish
 			const endDate = new Date(selectedDate)
 			endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0, 0)
 
-			// Agar tugash vaqti boshlash vaqtidan kichik bo'lsa, keyingi kunga o'tkazamiz
-			if (parseInt(endHours) < parseInt(startHours)) {
+			// Agar tugash vaqti boshlang'ich vaqtdan kichik bo'lsa
+			// (masalan, 23:00 - 01:00), tugash vaqtiga bir kun qo'shamiz
+			if (endDate < startDate) {
 				endDate.setDate(endDate.getDate() + 1)
+			}
+
+			// Vaqt farqini milliskundlarda hisoblash
+			const timeDiff = endDate.getTime() - startDate.getTime()
+
+			// Vaqt farqini soatlarga aylantirish
+			const hoursDiff = timeDiff / (1000 * 60 * 60)
+
+			// Agar vaqt farqi manfiy yoki 24 soatdan ko'p bo'lsa
+			if (hoursDiff < 0 || hoursDiff > 24) {
+				throw new Error("Noto'g'ri vaqt oralig'i kiritildi")
 			}
 
 			const data = {
@@ -167,8 +185,15 @@ export default function DashboardPage() {
 				endTime: endDate.toISOString(),
 				date: selectedDate.toISOString().split('T')[0],
 				description: formData.description,
-				breakMinutes: formData.breakMinutes,
+				breakMinutes: parseInt(formData.breakMinutes.toString()) || 0,
 			}
+
+			console.log('Preparing data:', {
+				...data,
+				startTimeLocal: startDate.toLocaleString(),
+				endTimeLocal: endDate.toLocaleString(),
+				dateLocal: selectedDate.toLocaleString(),
+			})
 
 			let updatedEntry: TimeEntry
 			if (editingEntry) {
@@ -242,18 +267,18 @@ export default function DashboardPage() {
 
 	// Oylar ro'yxati
 	const months = [
-		{ value: 1, label: 'Yanvar' },
-		{ value: 2, label: 'Fevral' },
-		{ value: 3, label: 'Mart' },
-		{ value: 4, label: 'Aprel' },
+		{ value: 1, label: 'January' },
+		{ value: 2, label: 'February' },
+		{ value: 3, label: 'March' },
+		{ value: 4, label: 'April' },
 		{ value: 5, label: 'May' },
-		{ value: 6, label: 'Iyun' },
-		{ value: 7, label: 'Iyul' },
-		{ value: 8, label: 'Avgust' },
-		{ value: 9, label: 'Sentabr' },
-		{ value: 10, label: 'Oktabr' },
-		{ value: 11, label: 'Noyabr' },
-		{ value: 12, label: 'Dekabr' },
+		{ value: 6, label: 'June' },
+		{ value: 7, label: 'July' },
+		{ value: 8, label: 'August' },
+		{ value: 9, label: 'September' },
+		{ value: 10, label: 'October' },
+		{ value: 11, label: 'November' },
+		{ value: 12, label: 'December' },
 	]
 
 	return (
@@ -268,7 +293,7 @@ export default function DashboardPage() {
 						{userData && (
 							<p className='text-sm sm:text-base text-gray-400'>
 								{userData.username} -{' '}
-								{userData.position === 'worker' ? 'Ishchi' : 'Rider'}
+								{userData.position === 'worker' ? 'Worker' : 'Rider'}
 							</p>
 						)}
 					</div>
@@ -276,30 +301,28 @@ export default function DashboardPage() {
 						onClick={handleLogout}
 						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm'
 					>
-						Chiqish
+						Logout
 					</Button>
 				</div>
 
 				{/* Statistika */}
 				<div className='grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4'>
 					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>Jami soatlar</p>
+						<p className='text-xs sm:text-sm text-gray-400'>Total Hours</p>
 						<p className='text-base sm:text-xl font-bold text-[#4E7BEE]'>
-							{stats.totalHours.toFixed(1)} soat
+							{stats.totalHours.toFixed(1)} hours
 						</p>
 					</Card>
 					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>Oddiy kunlar</p>
+						<p className='text-xs sm:text-sm text-gray-400'>Regular Days</p>
 						<p className='text-base sm:text-xl font-bold text-[#4CC4C0]'>
-							{stats.regularDays} kun
+							{stats.regularDays} days
 						</p>
 					</Card>
 					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>
-							Qo&apos;shimcha kunlar
-						</p>
+						<p className='text-xs sm:text-sm text-gray-400'>Overtime Days</p>
 						<p className='text-base sm:text-xl font-bold text-[#9B5DE5]'>
-							{stats.overtimeDays} kun
+							{stats.overtimeDays} days
 						</p>
 					</Card>
 					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
@@ -307,7 +330,7 @@ export default function DashboardPage() {
 							onClick={handleDownloadPDF}
 							className='w-full bg-[#00875A] hover:bg-[#00875A]/90 text-xs sm:text-sm h-8 sm:h-10'
 						>
-							PDF yuklab olish
+							Download PDF
 						</Button>
 					</Card>
 				</div>
@@ -316,12 +339,12 @@ export default function DashboardPage() {
 				<Card className='bg-[#0E1422] border-none text-white'>
 					<div className='p-3 sm:p-6'>
 						<h2 className='text-base sm:text-xl mb-3 sm:mb-4'>
-							{editingEntry ? 'Vaqtni tahrirlash' : "Yangi vaqt qo'shish"}
+							{editingEntry ? 'Edit Time Entry' : 'Add New Time Entry'}
 						</h2>
 						<form onSubmit={handleSubmit} className='space-y-3 sm:space-y-4'>
 							<div className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4'>
 								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Sana</Label>
+									<Label className='text-xs sm:text-sm'>Date</Label>
 									<Input
 										type='date'
 										value={selectedDate.toISOString().split('T')[0]}
@@ -331,7 +354,7 @@ export default function DashboardPage() {
 									/>
 								</div>
 								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Boshlash vaqti</Label>
+									<Label className='text-xs sm:text-sm'>Start Time</Label>
 									<TimePicker
 										value={formData.startTime}
 										onChange={time =>
@@ -340,7 +363,7 @@ export default function DashboardPage() {
 									/>
 								</div>
 								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Tugatish vaqti</Label>
+									<Label className='text-xs sm:text-sm'>End Time</Label>
 									<TimePicker
 										value={formData.endTime}
 										onChange={time =>
@@ -349,9 +372,7 @@ export default function DashboardPage() {
 									/>
 								</div>
 								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>
-										Tanaffus (daqiqada)
-									</Label>
+									<Label className='text-xs sm:text-sm'>Break (minutes)</Label>
 									<Input
 										type='number'
 										min='0'
@@ -367,14 +388,14 @@ export default function DashboardPage() {
 								</div>
 							</div>
 							<div className='space-y-1 sm:space-y-2'>
-								<Label className='text-xs sm:text-sm'>Izoh</Label>
+								<Label className='text-xs sm:text-sm'>Description</Label>
 								<Input
 									value={formData.description}
 									onChange={e =>
 										setFormData({ ...formData, description: e.target.value })
 									}
 									required
-									placeholder='Ish haqida qisqacha izoh'
+									placeholder='Brief description of work'
 									className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
 								/>
 							</div>
@@ -384,11 +405,7 @@ export default function DashboardPage() {
 									disabled={loading}
 									className='flex-1 sm:flex-none bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0] text-xs sm:text-sm h-8 sm:h-10'
 								>
-									{loading
-										? 'Saqlanmoqda...'
-										: editingEntry
-										? 'Yangilash'
-										: 'Saqlash'}
+									{loading ? 'Saving...' : editingEntry ? 'Update' : 'Save'}
 								</Button>
 								{editingEntry && (
 									<Button
@@ -405,7 +422,7 @@ export default function DashboardPage() {
 										}}
 										className='flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm h-8 sm:h-10'
 									>
-										Bekor qilish
+										Cancel
 									</Button>
 								)}
 							</div>
@@ -420,10 +437,12 @@ export default function DashboardPage() {
 				<Card className='bg-[#0E1422] border-none text-white'>
 					<div className='p-3 sm:p-6'>
 						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-4 sm:mb-6'>
-							<h2 className='text-base sm:text-xl'>Mening vaqtlarim</h2>
+							<h2 className='text-base sm:text-xl'>My Time Entries</h2>
 							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto'>
 								<div className='flex items-center gap-2 w-full sm:w-auto'>
-									<Label className='text-xs sm:text-sm min-w-[30px]'>Oy:</Label>
+									<Label className='text-xs sm:text-sm min-w-[30px]'>
+										Month:
+									</Label>
 									<select
 										value={selectedMonth}
 										onChange={e => setSelectedMonth(parseInt(e.target.value))}
@@ -438,7 +457,7 @@ export default function DashboardPage() {
 								</div>
 								<div className='flex items-center gap-2 w-full sm:w-auto'>
 									<Label className='text-xs sm:text-sm min-w-[30px]'>
-										Yil:
+										Year:
 									</Label>
 									<select
 										value={selectedYear}
@@ -458,7 +477,7 @@ export default function DashboardPage() {
 							<div className='space-y-2 sm:space-y-4'>
 								{loading ? (
 									<p className='text-center text-gray-400 text-xs sm:text-sm'>
-										Yuklanmoqda...
+										Loading...
 									</p>
 								) : error ? (
 									<p className='text-center text-red-500 text-xs sm:text-sm'>
@@ -466,7 +485,7 @@ export default function DashboardPage() {
 									</p>
 								) : filteredEntries.length === 0 ? (
 									<p className='text-center text-gray-400 text-xs sm:text-sm'>
-										Bu oyda vaqtlar kiritilmagan
+										No time entries for this month
 									</p>
 								) : (
 									filteredEntries.map(entry => (
@@ -481,19 +500,19 @@ export default function DashboardPage() {
 													</p>
 													<div className='text-xs text-gray-400 space-y-0.5'>
 														<p>
-															Sana:{' '}
-															{new Date(entry.date).toLocaleDateString('uz-UZ')}
+															Date:{' '}
+															{new Date(entry.date).toLocaleDateString('en-US')}
 														</p>
 														<p>
-															Vaqt: {formatTime(entry.startTime)} -{' '}
+															Time: {formatTime(entry.startTime)} -{' '}
 															{formatTime(entry.endTime)}
 														</p>
-														<p>Tanaffus: {entry.breakMinutes} daqiqa</p>
+														<p>Break: {entry.breakMinutes} minutes</p>
 													</div>
 												</div>
 												<div className='flex items-center gap-2 self-end sm:self-center'>
 													<p className='font-bold text-base sm:text-lg text-[#4CC4C0]'>
-														{entry.hours.toFixed(1)} soat
+														{entry.hours.toFixed(1)} hours
 													</p>
 													<div className='flex gap-1'>
 														<Button

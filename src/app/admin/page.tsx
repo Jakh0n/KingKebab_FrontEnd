@@ -58,18 +58,18 @@ export default function AdminPage() {
 
 	// Oylar ro'yxati
 	const months = [
-		'Yanvar',
-		'Fevral',
-		'Mart',
+		'January',
+		'February',
+		'March',
 		'April',
 		'May',
-		'Iyun',
-		'Iyul',
-		'Avgust',
-		'Sentabr',
-		'Oktabr',
-		'Noyabr',
-		'Dekabr',
+		'June',
+		'July',
+		'August',
+		'September',
+		'October',
+		'November',
+		'December',
 	]
 
 	// Tanlangan oyga tegishli yozuvlarni filterlash
@@ -117,7 +117,7 @@ export default function AdminPage() {
 		return (
 			<main className='min-h-screen p-4 bg-[#0A0F1C]'>
 				<div className='max-w-[1400px] mx-auto'>
-					<p className='text-center text-white'>Yuklanmoqda...</p>
+					<p className='text-center text-white'>Loading...</p>
 				</div>
 			</main>
 		)
@@ -128,7 +128,7 @@ export default function AdminPage() {
 			<div className='max-w-[1400px] mx-auto'>
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
 					<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE]'>
-						Admin paneli
+						Admin Panel
 					</h1>
 					<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
 						<select
@@ -157,13 +157,13 @@ export default function AdminPage() {
 							onClick={handleLogout}
 							className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 w-full sm:w-auto'
 						>
-							Chiqish
+							Logout
 						</Button>
 					</div>
 				</div>
 
 				<div className='flex flex-col lg:flex-row gap-4'>
-					{/* Ishchilar ro'yxati */}
+					{/* Workers List */}
 					<div className='w-full lg:w-1/3 h-[300px] lg:h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2'>
 						<div className='space-y-3 sm:space-y-4'>
 							{Object.values(workerStats).map(worker => (
@@ -181,30 +181,30 @@ export default function AdminPage() {
 													{worker.username}
 												</h2>
 												<p className='text-gray-400 text-sm'>
-													{worker.position === 'worker' ? 'Ishchi' : 'Rider'}
+													{worker.position === 'worker' ? 'Worker' : 'Rider'}
 												</p>
 											</div>
 											<div className='bg-[#4E7BEE]/10 px-3 py-1 rounded-full'>
 												<p className='text-[#4E7BEE] font-medium text-sm sm:text-base'>
-													{worker.totalHours.toFixed(1)} soat
+													{worker.totalHours.toFixed(1)} hours
 												</p>
 											</div>
 										</div>
 										<div className='grid grid-cols-2 gap-3 sm:gap-4'>
 											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
 												<p className='text-gray-400 text-xs sm:text-sm'>
-													Oddiy kunlar
+													Regular Days
 												</p>
 												<p className='text-[#4CC4C0] font-semibold text-sm sm:text-base'>
-													{worker.regularDays} kun
+													{worker.regularDays} days
 												</p>
 											</div>
 											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
 												<p className='text-gray-400 text-xs sm:text-sm'>
-													Qo&apos;shimcha
+													Overtime
 												</p>
 												<p className='text-[#9B5DE5] font-semibold text-sm sm:text-base'>
-													{worker.overtimeDays} kun
+													{worker.overtimeDays} days
 												</p>
 											</div>
 										</div>
@@ -214,20 +214,20 @@ export default function AdminPage() {
 						</div>
 					</div>
 
-					{/* Tanlangan ishchi ma'lumotlari */}
+					{/* Selected Worker Details */}
 					<div className='w-full lg:w-2/3'>
 						<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-6 h-[400px] lg:h-[calc(100vh-120px)]'>
 							{selectedWorker ? (
 								<div className='h-full flex flex-col'>
 									<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
 										<h2 className='text-lg sm:text-xl font-semibold'>
-											{workerStats[selectedWorker].username} - Vaqt tarixi
+											{workerStats[selectedWorker].username} - Time History
 										</h2>
 										<Button
 											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto'
 											onClick={() => handleDownloadPDF(selectedWorker)}
 										>
-											PDF yuklab olish
+											Download PDF
 										</Button>
 									</div>
 									<div className='space-y-3 sm:space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1'>
@@ -243,17 +243,17 @@ export default function AdminPage() {
 													<div className='grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4'>
 														<div>
 															<p className='text-gray-400 text-xs sm:text-sm'>
-																Sana
+																Date
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
 																{new Date(entry.date).toLocaleDateString(
-																	'uz-UZ'
+																	'en-US'
 																)}
 															</p>
 														</div>
 														<div>
 															<p className='text-gray-400 text-xs sm:text-sm'>
-																Vaqt
+																Time
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
 																{formatTime(entry.startTime)} -{' '}
@@ -262,24 +262,24 @@ export default function AdminPage() {
 														</div>
 														<div>
 															<p className='text-gray-400 text-xs sm:text-sm'>
-																Ishlagan soat
+																Hours Worked
 															</p>
 															<p className='font-medium text-sm sm:text-base text-[#4E7BEE]'>
-																{entry.hours.toFixed(1)} soat
+																{entry.hours.toFixed(1)} hours
 															</p>
 														</div>
 														<div>
 															<p className='text-gray-400 text-xs sm:text-sm'>
-																Tanaffus
+																Break
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
-																{entry.breakMinutes} daqiqa
+																{entry.breakMinutes} minutes
 															</p>
 														</div>
 													</div>
 													<div className='mt-3'>
 														<p className='text-gray-400 text-xs sm:text-sm'>
-															Izoh
+															Description
 														</p>
 														<p className='font-medium text-sm sm:text-base'>
 															{entry.description}
@@ -291,7 +291,7 @@ export default function AdminPage() {
 								</div>
 							) : (
 								<p className='text-center text-gray-400 text-sm'>
-									Ishchini tanlang
+									Select a worker
 								</p>
 							)}
 						</Card>
