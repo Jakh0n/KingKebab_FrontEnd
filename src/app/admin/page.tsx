@@ -130,6 +130,7 @@ export default function AdminPage() {
 					<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE]'>
 						Admin Panel
 					</h1>
+
 					<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
 						<select
 							className='bg-[#1A1F2E] text-white px-3 py-2 rounded text-sm w-full sm:w-auto'
@@ -147,7 +148,7 @@ export default function AdminPage() {
 							value={selectedYear}
 							onChange={e => setSelectedYear(parseInt(e.target.value))}
 						>
-							{[2023, 2024, 2025].map(year => (
+							{[2023, 2024, 2025, 2026].map(year => (
 								<option key={year} value={year}>
 									{year}
 								</option>
@@ -159,6 +160,40 @@ export default function AdminPage() {
 						>
 							Logout
 						</Button>
+					</div>
+				</div>
+
+				<div className='flex flex-col lg:flex-row gap-4'>
+					{/* Workers Statistics */}
+					<div className='w-full'>
+						<div className='grid grid-cols-3 gap-4 mb-4'>
+							<Card className='bg-[#0E1422] border-none text-white p-4'>
+								<h3 className='text-gray-400 text-sm'>Total Staff</h3>
+								<p className='text-2xl font-bold text-[#4E7BEE]'>
+									{Object.values(workerStats).length}
+								</p>
+							</Card>
+							<Card className='bg-[#0E1422] border-none text-white p-4'>
+								<h3 className='text-gray-400 text-sm'>Workers</h3>
+								<p className='text-2xl font-bold text-[#4CC4C0]'>
+									{
+										Object.values(workerStats).filter(
+											w => w.position === 'worker'
+										).length
+									}
+								</p>
+							</Card>
+							<Card className='bg-[#0E1422] border-none text-white p-4'>
+								<h3 className='text-gray-400 text-sm'>Riders</h3>
+								<p className='text-2xl font-bold text-[#9B5DE5]'>
+									{
+										Object.values(workerStats).filter(
+											w => w.position === 'rider'
+										).length
+									}
+								</p>
+							</Card>
+						</div>
 					</div>
 				</div>
 
