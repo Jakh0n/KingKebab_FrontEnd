@@ -13,6 +13,7 @@ export default function AdminPage() {
 	const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 	const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
+	const [searchQuery, setSearchQuery] = useState('')
 	const router = useRouter()
 
 	const loadEntries = useCallback(async () => {
@@ -125,6 +126,17 @@ export default function AdminPage() {
 		return selectedWorker ? workerStats[selectedWorker] : null
 	}, [selectedWorker, workerStats])
 
+	// Filter workers based on search query
+	const filteredWorkers = useMemo(() => {
+		const workers = Object.values(workerStats)
+		if (!searchQuery) return workers
+
+		const query = searchQuery.toLowerCase()
+		return workers.filter(worker =>
+			worker.username.toLowerCase().includes(query)
+		)
+	}, [workerStats, searchQuery])
+
 	async function handleDownloadPDF(userId: string) {
 		try {
 			await downloadWorkerPDF(userId, selectedMonth, selectedYear)
@@ -218,47 +230,56 @@ export default function AdminPage() {
 				</div>
 
 				<div className='flex flex-col lg:flex-row gap-4'>
-					{/* Workers List */}
-					<div className='w-full lg:w-1/3 h-[300px] lg:h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-2'>
-						<div className='space-y-3 sm:space-y-4'>
-							{Object.values(workerStats).map(worker => (
+					{/* Workers List Sidebar */}
+					<div className='w-full lg:w-1/3 bg-[#0E1422] rounded-lg p-4'>
+						<div className='mb-6'>
+							<input
+								type='text'
+								placeholder='Search workers...'
+								value={searchQuery}
+								onChange={e => setSearchQuery(e.target.value)}
+								className='w-full bg-[#1A1F2E] text-white px-4 py-3 rounded-lg text-sm border-none focus:ring-2 focus:ring-[#4E7BEE] outline-none placeholder:text-gray-400'
+							/>
+						</div>
+						<div className='h-[calc(100vh-230px)] overflow-y-auto custom-scrollbar pr-2 space-y-3'>
+							{filteredWorkers.map(worker => (
 								<Card
 									key={worker.id}
-									className={`bg-[#0E1422] border-none text-white p-4 sm:p-6 cursor-pointer transition-all hover:bg-[#1A1F2E] ${
-										selectedWorker === worker.id ? 'ring-2 ring-[#4E7BEE]' : ''
+									className={`border-none text-white p-5 cursor-pointer transition-all hover:bg-[#1A1F2E] ${
+										selectedWorker === worker.id
+											? 'bg-[#1A1F2E] ring-2 ring-[#4E7BEE]'
+											: 'bg-[#0A0F1C]'
 									}`}
 									onClick={() => setSelectedWorker(worker.id)}
 								>
 									<div className='flex flex-col gap-4'>
 										<div className='flex justify-between items-start'>
 											<div>
-												<h2 className='text-base sm:text-xl font-semibold'>
+												<h2 className='text-lg font-semibold mb-1'>
 													{worker.username}
 												</h2>
 												<p className='text-gray-400 text-sm'>
 													{worker.position === 'worker' ? 'Worker' : 'Rider'}
 												</p>
 											</div>
-											<div className='bg-[#4E7BEE]/10 px-3 py-1 rounded-full'>
-												<p className='text-[#4E7BEE] font-medium text-sm sm:text-base'>
+											<div className='bg-[#4E7BEE]/10 px-3 py-1.5 rounded-full'>
+												<p className='text-[#4E7BEE] font-medium'>
 													{worker.totalHours.toFixed(1)} hours
 												</p>
 											</div>
 										</div>
-										<div className='grid grid-cols-2 gap-3 sm:gap-4'>
+										<div className='grid grid-cols-2 gap-3'>
 											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
-												<p className='text-gray-400 text-xs sm:text-sm'>
+												<p className='text-gray-400 text-xs mb-1'>
 													Regular Days
 												</p>
-												<p className='text-[#4CC4C0] font-semibold text-sm sm:text-base'>
+												<p className='text-[#4CC4C0] font-semibold'>
 													{worker.regularDays} days
 												</p>
 											</div>
 											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
-												<p className='text-gray-400 text-xs sm:text-sm'>
-													Overtime
-												</p>
-												<p className='text-[#9B5DE5] font-semibold text-sm sm:text-base'>
+												<p className='text-gray-400 text-xs mb-1'>Overtime</p>
+												<p className='text-[#9B5DE5] font-semibold'>
 													{worker.overtimeDays} days
 												</p>
 											</div>
@@ -271,15 +292,15 @@ export default function AdminPage() {
 
 					{/* Selected Worker Details */}
 					<div className='w-full lg:w-2/3'>
-						<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-6 h-[400px] lg:h-[calc(100vh-120px)]'>
+						<Card className='bg-[#0E1422] border-none text-white p-6 h-[calc(100vh-120px)]'>
 							{selectedWorkerData ? (
 								<div className='h-full flex flex-col'>
 									<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
-										<h2 className='text-lg sm:text-xl font-semibold'>
+										<h2 className='text-xl font-semibold'>
 											{selectedWorkerData.username} - Time History
 										</h2>
 										<Button
-											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto'
+											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-6'
 											onClick={() =>
 												selectedWorker && handleDownloadPDF(selectedWorker)
 											}
@@ -347,8 +368,8 @@ export default function AdminPage() {
 									</div>
 								</div>
 							) : (
-								<p className='text-center text-gray-400 text-sm'>
-									Select a worker
+								<p className='text-center text-gray-400'>
+									Select a worker to view details
 								</p>
 							)}
 						</Card>
