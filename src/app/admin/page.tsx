@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { downloadWorkerPDF, getAllTimeEntries, logout } from '@/lib/api'
 import { TimeEntry } from '@/types'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function AdminPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -15,17 +15,7 @@ export default function AdminPage() {
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
 	const router = useRouter()
 
-	useEffect(() => {
-		const token = localStorage.getItem('token')
-		if (!token) {
-			router.push('/login')
-			return
-		}
-
-		loadEntries()
-	}, [router])
-
-	async function loadEntries() {
+	const loadEntries = useCallback(async () => {
 		try {
 			setLoading(true)
 			const data = await getAllTimeEntries()
@@ -41,7 +31,17 @@ export default function AdminPage() {
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [router])
+
+	useEffect(() => {
+		const token = localStorage.getItem('token')
+		if (!token) {
+			router.push('/login')
+			return
+		}
+
+		loadEntries()
+	}, [router, loadEntries])
 
 	function handleLogout() {
 		logout()
@@ -81,29 +81,49 @@ export default function AdminPage() {
 		)
 	})
 
-	// Ishchilar bo'yicha statistika
-	const workerStats = filteredEntries.reduce((acc, entry) => {
-		if (!entry.user) return acc
+	// Ishchilar bo'yicha statistika - useMemo bilan optimallashtirish
+	const workerStats = useMemo(() => {
+		return filteredEntries.reduce(
+			(acc, entry) => {
+				if (!entry.user?._id) return acc
 
-		const userId = entry.user._id
-		if (!acc[userId]) {
-			acc[userId] = {
-				id: userId,
-				username: entry.user.username,
-				position: entry.user.position,
-				totalHours: 0,
-				regularDays: 0,
-				overtimeDays: 0,
-			}
-		}
-		acc[userId].totalHours += entry.hours
-		if (entry.hours <= 12) {
-			acc[userId].regularDays++
-		} else {
-			acc[userId].overtimeDays++
-		}
-		return acc
-	}, {} as Record<string, { id: string; username: string; position: string; totalHours: number; regularDays: number; overtimeDays: number }>)
+				const userId = entry.user._id
+				if (!acc[userId]) {
+					acc[userId] = {
+						id: userId,
+						username: entry.user.username || '',
+						position: entry.user.position || 'worker',
+						totalHours: 0,
+						regularDays: 0,
+						overtimeDays: 0,
+					}
+				}
+				acc[userId].totalHours += entry.hours
+				if (entry.hours <= 12) {
+					acc[userId].regularDays++
+				} else {
+					acc[userId].overtimeDays++
+				}
+				return acc
+			},
+			{} as Record<
+				string,
+				{
+					id: string
+					username: string
+					position: string
+					totalHours: number
+					regularDays: number
+					overtimeDays: number
+				}
+			>
+		)
+	}, [filteredEntries])
+
+	// Tanlangan ishchi ma'lumotlari
+	const selectedWorkerData = useMemo(() => {
+		return selectedWorker ? workerStats[selectedWorker] : null
+	}, [selectedWorker, workerStats])
 
 	async function handleDownloadPDF(userId: string) {
 		try {
@@ -252,15 +272,17 @@ export default function AdminPage() {
 					{/* Selected Worker Details */}
 					<div className='w-full lg:w-2/3'>
 						<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-6 h-[400px] lg:h-[calc(100vh-120px)]'>
-							{selectedWorker ? (
+							{selectedWorkerData ? (
 								<div className='h-full flex flex-col'>
 									<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
 										<h2 className='text-lg sm:text-xl font-semibold'>
-											{workerStats[selectedWorker].username} - Time History
+											{selectedWorkerData.username} - Time History
 										</h2>
 										<Button
 											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto'
-											onClick={() => handleDownloadPDF(selectedWorker)}
+											onClick={() =>
+												selectedWorker && handleDownloadPDF(selectedWorker)
+											}
 										>
 											Download PDF
 										</Button>
