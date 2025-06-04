@@ -2,10 +2,17 @@
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { downloadWorkerPDF, getAllTimeEntries, logout } from '@/lib/api'
+import {
+	downloadWorkerPDF,
+	getAllTimeEntries,
+	logout,
+	registerWorker,
+} from '@/lib/api'
 import { TimeEntry } from '@/types'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import AddWorkerModal from './components/AddWorkerModal'
 
 export default function AdminPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -14,6 +21,7 @@ export default function AdminPage() {
 	const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
 	const [searchQuery, setSearchQuery] = useState('')
+	const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 	const router = useRouter()
 
 	const loadEntries = useCallback(async () => {
@@ -145,6 +153,24 @@ export default function AdminPage() {
 		}
 	}
 
+	const handleAddWorker = async (workerData: {
+		username: string
+		password: string
+		position: string
+		isAdmin: boolean
+	}) => {
+		try {
+			await registerWorker(workerData)
+			setIsAddModalOpen(false)
+			await loadEntries() // Refresh the list
+			toast.success('Worker added successfully')
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : 'Failed to add worker'
+			)
+		}
+	}
+
 	if (loading) {
 		return (
 			<main className='min-h-screen p-4 bg-[#0A0F1C]'>
@@ -186,12 +212,20 @@ export default function AdminPage() {
 								</option>
 							))}
 						</select>
-						<Button
-							onClick={handleLogout}
-							className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 w-full sm:w-auto'
-						>
-							Logout
-						</Button>
+						<div className='flex gap-2 w-full sm:w-auto'>
+							<Button
+								onClick={() => setIsAddModalOpen(true)}
+								className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 flex-1 sm:flex-none'
+							>
+								Add Worker
+							</Button>
+							<Button
+								onClick={handleLogout}
+								className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none'
+							>
+								Logout
+							</Button>
+						</div>
 					</div>
 				</div>
 
@@ -376,6 +410,12 @@ export default function AdminPage() {
 					</div>
 				</div>
 			</div>
+
+			<AddWorkerModal
+				isOpen={isAddModalOpen}
+				onClose={() => setIsAddModalOpen(false)}
+				onAdd={handleAddWorker}
+			/>
 		</main>
 	)
 }

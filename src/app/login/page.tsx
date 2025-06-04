@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login } from '@/lib/api'
 import { Loader2 } from 'lucide-react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
 
@@ -87,12 +86,6 @@ export default function LoginPage() {
 								'Login'
 							)}
 						</Button>
-						<p className='text-center text-sm text-gray-500'>
-							Don&apos;t have an account?{' '}
-							<Link href='/register' className='text-blue-600 hover:underline'>
-								Register
-							</Link>
-						</p>
 					</form>
 				</CardContent>
 			</Card>
