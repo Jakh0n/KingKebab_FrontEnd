@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# King Kebab 🥙
 
-## Getting Started
+King Kebab is a modern food delivery platform built with Next.js frontend and Node.js backend.
 
-First, run the development server:
+## Technologies 🛠
+
+### Frontend
+
+- Next.js (TypeScript)
+- Shadcn UI components
+- Environment variables (.env.local)
+- ESLint configuration
+- PostCSS
+
+### Backend
+
+- Node.js
+- Express.js
+- MongoDB (with models)
+- Docker support
+- Environment variables (.env)
+
+## Getting Started 🚀
+
+### Running Frontend
 
 ```bash
+cd frontend
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend development server will run on http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Running Backend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd backend
+npm install
+npm start
+```
 
-## Learn More
+Backend server will run on http://localhost:5000
 
-To learn more about Next.js, take a look at the following resources:
+## Docker Deployment 🐳
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To run the backend in a Docker container:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cd backend
+docker build -t king-kebab-backend .
+docker run -p 5000:5000 king-kebab-backend
+```
 
-## Deploy on Vercel
+## Project Structure 📁
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+king-kebab/
+├── frontend/           # Next.js frontend application
+│   ├── src/           # Source code
+│   ├── public/        # Static files
+│   └── .env.local     # Frontend environment variables
+│
+└── backend/           # Node.js backend server
+    ├── routes/        # API routes
+    ├── models/        # Database models
+    ├── middleware/    # Middleware functions
+    └── .env          # Backend environment variables
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment Variables 🔐
+
+### Frontend (.env.local)
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
+
+### Backend (.env)
+
+```
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+```
+
+## License 📝
+
+MIT
+
+## Author 👨‍��
+
+King Kebab Team

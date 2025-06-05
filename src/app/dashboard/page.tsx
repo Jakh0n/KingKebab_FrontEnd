@@ -7,13 +7,12 @@ import { Label } from '@/components/ui/label'
 import {
 	addTimeEntry,
 	deleteTimeEntry,
-	downloadMyPDF,
 	getMyTimeEntries,
 	logout,
 	updateTimeEntry,
 } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
-import { Pencil, Trash2 } from 'lucide-react'
+import { LogOut, Pencil, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { TimePicker } from '../../components/ui/time-picker'
@@ -39,6 +38,7 @@ export default function DashboardPage() {
 	const [selectedDate, setSelectedDate] = useState(new Date())
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 	const router = useRouter()
+	const [isLoading, setIsLoading] = useState(false)
 
 	const loadEntries = useCallback(async () => {
 		try {
@@ -94,8 +94,10 @@ export default function DashboardPage() {
 	}, [selectedMonth, selectedYear, loadEntries, userData])
 
 	function handleLogout() {
+		setIsLoading(true)
 		logout()
 		router.push('/login')
+		setIsLoading(false)
 	}
 
 	// Tahrirlash funksiyasi
@@ -238,14 +240,14 @@ export default function DashboardPage() {
 	}
 
 	// PDF yuklab olish funksiyasi
-	async function handleDownloadPDF() {
-		try {
-			await downloadMyPDF(selectedMonth, selectedYear)
-		} catch (error) {
-			console.error('Error downloading PDF:', error)
-			setError('PDF yuklab olishda xatolik yuz berdi')
-		}
-	}
+	// async function handleDownloadPDF() {
+	// 	try {
+	// 		await downloadMyPDF(selectedMonth, selectedYear)
+	// 	} catch (error) {
+	// 		console.error('Error downloading PDF:', error)
+	// 		setError('PDF yuklab olishda xatolik yuz berdi')
+	// 	}
+	// }
 
 	// Tanlangan oyning vaqtlarini filterlash
 	const filteredEntries = entries
@@ -299,9 +301,16 @@ export default function DashboardPage() {
 					</div>
 					<Button
 						onClick={handleLogout}
-						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm'
+						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer'
 					>
-						Logout
+						{isLoading ? (
+							<span className='ml-1'>Logging out...</span>
+						) : (
+							<>
+								<span className='ml-1'>Logout</span>
+								<LogOut size={16} />
+							</>
+						)}
 					</Button>
 				</div>
 
@@ -325,14 +334,14 @@ export default function DashboardPage() {
 							{stats.overtimeDays} days
 						</p>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
+					{/* <Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
 						<Button
 							onClick={handleDownloadPDF}
 							className='w-full bg-[#00875A] hover:bg-[#00875A]/90 text-xs sm:text-sm h-8 sm:h-10'
 						>
 							Download PDF
 						</Button>
-					</Card>
+					</Card> */}
 				</div>
 
 				{/* Vaqt qo'shish formasi */}
@@ -394,7 +403,6 @@ export default function DashboardPage() {
 									onChange={e =>
 										setFormData({ ...formData, description: e.target.value })
 									}
-									required
 									placeholder='Brief description of work'
 									className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
 								/>
@@ -403,7 +411,7 @@ export default function DashboardPage() {
 								<Button
 									type='submit'
 									disabled={loading}
-									className='flex-1 sm:flex-none bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0] text-xs sm:text-sm h-8 sm:h-10'
+									className='flex-1 sm:flex-none bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0] text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
 								>
 									{loading ? 'Saving...' : editingEntry ? 'Update' : 'Save'}
 								</Button>
@@ -420,7 +428,7 @@ export default function DashboardPage() {
 												date: new Date().toISOString().split('T')[0],
 											})
 										}}
-										className='flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm h-8 sm:h-10'
+										className='flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
 									>
 										Cancel
 									</Button>
@@ -446,7 +454,7 @@ export default function DashboardPage() {
 									<select
 										value={selectedMonth}
 										onChange={e => setSelectedMonth(parseInt(e.target.value))}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
 									>
 										{months.map(month => (
 											<option key={month.value} value={month.value}>
@@ -462,7 +470,7 @@ export default function DashboardPage() {
 									<select
 										value={selectedYear}
 										onChange={e => setSelectedYear(parseInt(e.target.value))}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
 									>
 										{[2023, 2024, 2025].map(year => (
 											<option key={year} value={year}>

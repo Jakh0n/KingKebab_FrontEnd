@@ -116,7 +116,7 @@ export default function AddWorkerModal({
 						<Checkbox
 							id='isAdmin'
 							checked={formData.isAdmin}
-							onCheckedChange={checked =>
+							onCheckedChange={(checked: boolean | 'indeterminate') =>
 								setFormData({ ...formData, isAdmin: checked as boolean })
 							}
 							className='border-white data-[state=checked]:bg-[#4E7BEE] data-[state=checked]:border-[#4E7BEE]'
