@@ -9,6 +9,22 @@ import {
 	registerWorker,
 } from '@/lib/api'
 import { TimeEntry } from '@/types'
+import {
+	Bike,
+	CalendarDays,
+	ChefHat,
+	ChevronRight,
+	Clock,
+	Coffee,
+	Download,
+	FileText,
+	LogOut,
+	NotebookPen,
+	Search,
+	Timer,
+	UserPlus,
+	Users,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -173,74 +189,97 @@ export default function AdminPage() {
 
 	if (loading) {
 		return (
-			<main className='min-h-screen p-4 bg-[#0A0F1C]'>
-				<div className='max-w-[1400px] mx-auto'>
-					<p className='text-center text-white'>Loading...</p>
+			<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
+				<div className='max-w-[1400px] mx-auto flex items-center justify-center h-screen'>
+					<div className='flex flex-col items-center gap-2'>
+						<div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#4E7BEE]'></div>
+						<p className='text-white text-sm'>Loading...</p>
+					</div>
 				</div>
 			</main>
 		)
 	}
 
 	return (
-		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
-			<div className='max-w-[1400px] mx-auto'>
-				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
-					<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE]'>
-						Admin Panel
-					</h1>
+		<main className='min-h-screen p-2 sm:p-4 lg:p-6 bg-[#0A0F1C]'>
+			<div className='max-w-[1400px] mx-auto space-y-4'>
+				{/* Header */}
+				<div className='bg-[#0E1422] p-3 sm:p-4 lg:p-6 rounded-lg shadow-lg'>
+					<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
+						<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE] flex items-center gap-2 min-w-max'>
+							<NotebookPen size={28} className='text-[#4E7BEE]' />
+							<span className='text-white'>Admin</span> Panel
+						</h1>
 
-					<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
-						<select
-							className='bg-[#1A1F2E] text-white px-3 py-2 rounded text-sm w-full sm:w-auto'
-							value={selectedMonth}
-							onChange={e => setSelectedMonth(parseInt(e.target.value))}
-						>
-							{months.map((month, index) => (
-								<option key={index + 1} value={index + 1}>
-									{month}
-								</option>
-							))}
-						</select>
-						<select
-							className='bg-[#1A1F2E] text-white px-3 py-2 rounded text-sm w-full sm:w-auto'
-							value={selectedYear}
-							onChange={e => setSelectedYear(parseInt(e.target.value))}
-						>
-							{[2023, 2024, 2025, 2026].map(year => (
-								<option key={year} value={year}>
-									{year}
-								</option>
-							))}
-						</select>
-						<div className='flex gap-2 w-full sm:w-auto'>
-							<Button
-								onClick={() => setIsAddModalOpen(true)}
-								className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 flex-1 sm:flex-none'
-							>
-								Add Worker
-							</Button>
-							<Button
-								onClick={handleLogout}
-								className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none'
-							>
-								Logout
-							</Button>
+						<div className='flex flex-col sm:flex-row lg:flex items-stretch sm:items-center gap-3 w-full sm:w-auto'>
+							<div className='flex xs:flex-row gap-3 w-full sm:w-auto'>
+								<select
+									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+									value={selectedMonth}
+									onChange={e => setSelectedMonth(parseInt(e.target.value))}
+								>
+									{months.map((month, index) => (
+										<option key={index + 1} value={index + 1}>
+											{month}
+										</option>
+									))}
+								</select>
+								<select
+									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+									value={selectedYear}
+									onChange={e => setSelectedYear(parseInt(e.target.value))}
+								>
+									{[2023, 2024, 2025, 2026].map(year => (
+										<option key={year} value={year}>
+											{year}
+										</option>
+									))}
+								</select>
+							</div>
+							<div className='flex gap-2 w-full sm:w-auto'>
+								<Button
+									onClick={() => setIsAddModalOpen(true)}
+									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 flex-1 sm:flex-none gap-2 h-10'
+								>
+									<UserPlus size={18} />
+									<span className='hidden sm:inline'>Add Worker</span>
+									<span className='sm:hidden'>Add</span>
+								</Button>
+								<Button
+									onClick={handleLogout}
+									className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none gap-2 h-10'
+								>
+									<LogOut size={18} />
+									<span className='hidden sm:inline'>Logout</span>
+									<span className='sm:hidden'>Exit</span>
+								</Button>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<div className='flex flex-col lg:flex-row gap-4'>
-					{/* Workers Statistics */}
-					<div className='w-full'>
-						<div className='grid grid-cols-3 gap-4 mb-4'>
-							<Card className='bg-[#0E1422] border-none text-white p-4'>
-								<h3 className='text-gray-400 text-sm'>Total Staff</h3>
+				{/* Stats Grid */}
+				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
+					<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#4E7BEE]/10 p-3 rounded-xl'>
+								<Users className='w-6 h-6 text-[#4E7BEE]' />
+							</div>
+							<div className='flex-1'>
+								<h3 className='text-gray-400 text-sm mb-1'>Total Staff</h3>
 								<p className='text-2xl font-bold text-[#4E7BEE]'>
 									{Object.values(workerStats).length}
 								</p>
-							</Card>
-							<Card className='bg-[#0E1422] border-none text-white p-4'>
-								<h3 className='text-gray-400 text-sm'>Workers</h3>
+							</div>
+						</div>
+					</Card>
+					<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#4CC4C0]/10 p-3 rounded-xl'>
+								<ChefHat className='w-6 h-6 text-[#4CC4C0]' />
+							</div>
+							<div className='flex-1'>
+								<h3 className='text-gray-400 text-sm mb-1'>Worker(s)</h3>
 								<p className='text-2xl font-bold text-[#4CC4C0]'>
 									{
 										Object.values(workerStats).filter(
@@ -248,9 +287,16 @@ export default function AdminPage() {
 										).length
 									}
 								</p>
-							</Card>
-							<Card className='bg-[#0E1422] border-none text-white p-4'>
-								<h3 className='text-gray-400 text-sm'>Riders</h3>
+							</div>
+						</div>
+					</Card>
+					<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#9B5DE5]/10 p-3 rounded-xl'>
+								<Bike className='w-6 h-6 text-[#9B5DE5]' />
+							</div>
+							<div className='flex-1'>
+								<h3 className='text-gray-400 text-sm mb-1'>Rider(s)</h3>
 								<p className='text-2xl font-bold text-[#9B5DE5]'>
 									{
 										Object.values(workerStats).filter(
@@ -258,63 +304,78 @@ export default function AdminPage() {
 										).length
 									}
 								</p>
-							</Card>
+							</div>
 						</div>
-					</div>
+					</Card>
 				</div>
 
+				{/* Main Content */}
 				<div className='flex flex-col lg:flex-row gap-4'>
-					{/* Workers List Sidebar */}
-					<div className='w-full lg:w-1/3 bg-[#0E1422] rounded-lg p-4'>
-						<div className='mb-6'>
+					{/* Workers List */}
+					<div className='w-full lg:w-1/3 bg-[#0E1422] rounded-lg p-3 sm:p-4'>
+						<div className='mb-4 sm:mb-6 relative'>
+							<Search
+								className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400'
+								size={18}
+							/>
 							<input
 								type='text'
 								placeholder='Search workers...'
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
-								className='w-full bg-[#1A1F2E] text-white px-4 py-3 rounded-lg text-sm border-none focus:ring-2 focus:ring-[#4E7BEE] outline-none placeholder:text-gray-400'
+								className='w-full bg-[#1A1F2E] text-white pl-10 pr-4 py-2.5 rounded-lg text-sm border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
 							/>
 						</div>
-						<div className='h-[calc(100vh-230px)] overflow-y-auto custom-scrollbar pr-2 space-y-3'>
+						<div className='h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)] overflow-y-auto custom-scrollbar pr-2 space-y-3'>
 							{filteredWorkers.map(worker => (
 								<Card
 									key={worker.id}
-									className={`border-none text-white p-5 cursor-pointer transition-all hover:bg-[#1A1F2E] ${
+									className={`border-none text-white p-3 sm:p-4 cursor-pointer transition-all hover:bg-[#1A1F2E] ${
 										selectedWorker === worker.id
 											? 'bg-[#1A1F2E] ring-2 ring-[#4E7BEE]'
 											: 'bg-[#0A0F1C]'
 									}`}
 									onClick={() => setSelectedWorker(worker.id)}
 								>
-									<div className='flex flex-col gap-4'>
+									<div className='flex flex-col gap-3'>
 										<div className='flex justify-between items-start'>
 											<div>
-												<h2 className='text-lg font-semibold mb-1'>
+												<h2 className='text-base sm:text-lg font-semibold mb-0.5 sm:mb-1 flex items-center gap-2'>
+													{worker.position === 'worker' ? (
+														<ChefHat size={16} className='text-[#4CC4C0]' />
+													) : (
+														<Bike size={16} className='text-[#9B5DE5]' />
+													)}
 													{worker.username}
 												</h2>
-												<p className='text-gray-400 text-sm'>
+												<p className='text-gray-400 text-xs sm:text-sm'>
 													{worker.position === 'worker' ? 'Worker' : 'Rider'}
 												</p>
 											</div>
-											<div className='bg-[#4E7BEE]/10 px-3 py-1.5 rounded-full'>
-												<p className='text-[#4E7BEE] font-medium'>
-													{worker.totalHours.toFixed(1)} hours
+											<div className='bg-[#4E7BEE]/10 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5'>
+												<Clock size={12} className='text-[#4E7BEE]' />
+												<p className='text-[#4E7BEE] font-medium text-xs sm:text-sm'>
+													{worker.totalHours.toFixed(1)}h
 												</p>
 											</div>
 										</div>
-										<div className='grid grid-cols-2 gap-3'>
-											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
-												<p className='text-gray-400 text-xs mb-1'>
-													Regular Days
+										<div className='grid grid-cols-2 gap-2 sm:gap-3'>
+											<div className='bg-[#1A1F2E] p-2 sm:p-3 rounded-lg'>
+												<p className='text-gray-400 text-xs mb-0.5 sm:mb-1 flex items-center gap-1'>
+													<CalendarDays size={12} />
+													Regular
 												</p>
-												<p className='text-[#4CC4C0] font-semibold'>
-													{worker.regularDays} days
+												<p className='text-[#4CC4C0] font-semibold text-sm'>
+													{worker.regularDays}d
 												</p>
 											</div>
-											<div className='bg-[#1A1F2E] p-3 rounded-lg'>
-												<p className='text-gray-400 text-xs mb-1'>Overtime</p>
-												<p className='text-[#9B5DE5] font-semibold'>
-													{worker.overtimeDays} days
+											<div className='bg-[#1A1F2E] p-2 sm:p-3 rounded-lg'>
+												<p className='text-gray-400 text-xs mb-0.5 sm:mb-1 flex items-center gap-1'>
+													<Timer size={12} />
+													Overtime
+												</p>
+												<p className='text-[#9B5DE5] font-semibold text-sm'>
+													{worker.overtimeDays}d
 												</p>
 											</div>
 										</div>
@@ -324,25 +385,32 @@ export default function AdminPage() {
 						</div>
 					</div>
 
-					{/* Selected Worker Details */}
+					{/* Worker Details */}
 					<div className='w-full lg:w-2/3'>
-						<Card className='bg-[#0E1422] border-none text-white p-6 h-[calc(100vh-120px)]'>
+						<Card className='bg-[#0E1422] border-none text-white p-3 sm:p-4 lg:p-6 h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)]'>
 							{selectedWorkerData ? (
 								<div className='h-full flex flex-col'>
-									<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6'>
-										<h2 className='text-xl font-semibold'>
-											{selectedWorkerData.username} - Time History
+									<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6'>
+										<h2 className='text-lg sm:text-xl font-semibold flex items-center gap-2'>
+											{selectedWorkerData.position === 'worker' ? (
+												<ChefHat size={20} className='text-[#4CC4C0]' />
+											) : (
+												<Bike size={20} className='text-[#9B5DE5]' />
+											)}
+											{selectedWorkerData.username}
 										</h2>
 										<Button
-											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-6'
+											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-4 sm:px-6 gap-2 h-9 sm:h-10'
 											onClick={() =>
 												selectedWorker && handleDownloadPDF(selectedWorker)
 											}
 										>
-											Download PDF
+											<Download size={16} />
+											<span className='hidden sm:inline'>Download PDF</span>
+											<span className='sm:hidden'>PDF</span>
 										</Button>
 									</div>
-									<div className='space-y-3 sm:space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1'>
+									<div className='space-y-2 sm:space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1'>
 										{filteredEntries
 											.filter(
 												entry => entry.user && entry.user._id === selectedWorker
@@ -350,11 +418,12 @@ export default function AdminPage() {
 											.map(entry => (
 												<div
 													key={entry._id}
-													className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg'
+													className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg hover:bg-[#242B3D] transition-all duration-300'
 												>
 													<div className='grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4'>
 														<div>
-															<p className='text-gray-400 text-xs sm:text-sm'>
+															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
+																<CalendarDays size={14} />
 																Date
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
@@ -364,7 +433,8 @@ export default function AdminPage() {
 															</p>
 														</div>
 														<div>
-															<p className='text-gray-400 text-xs sm:text-sm'>
+															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
+																<Clock size={14} />
 																Time
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
@@ -373,7 +443,8 @@ export default function AdminPage() {
 															</p>
 														</div>
 														<div>
-															<p className='text-gray-400 text-xs sm:text-sm'>
+															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
+																<Timer size={14} />
 																Hours Worked
 															</p>
 															<p className='font-medium text-sm sm:text-base text-[#4E7BEE]'>
@@ -381,7 +452,8 @@ export default function AdminPage() {
 															</p>
 														</div>
 														<div>
-															<p className='text-gray-400 text-xs sm:text-sm'>
+															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
+																<Coffee size={14} />
 																Break
 															</p>
 															<p className='font-medium text-sm sm:text-base'>
@@ -390,7 +462,8 @@ export default function AdminPage() {
 														</div>
 													</div>
 													<div className='mt-3'>
-														<p className='text-gray-400 text-xs sm:text-sm'>
+														<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
+															<FileText size={14} />
 															Description
 														</p>
 														<p className='font-medium text-sm sm:text-base'>
@@ -402,7 +475,8 @@ export default function AdminPage() {
 									</div>
 								</div>
 							) : (
-								<p className='text-center text-gray-400'>
+								<p className='text-center text-gray-400 flex items-center justify-center gap-2 h-full text-sm'>
+									<ChevronRight size={18} />
 									Select a worker to view details
 								</p>
 							)}

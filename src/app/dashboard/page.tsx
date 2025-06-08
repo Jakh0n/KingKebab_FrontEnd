@@ -12,7 +12,20 @@ import {
 	updateTimeEntry,
 } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
-import { LogOut, Pencil, Trash2 } from 'lucide-react'
+import {
+	AlertCircle,
+	Calendar,
+	CalendarDays,
+	CheckCircle2,
+	Clock,
+	Coffee,
+	FileText,
+	LogOut,
+	Pencil,
+	Timer,
+	Trash2,
+	XCircle,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { TimePicker } from '../../components/ui/time-picker'
@@ -315,55 +328,77 @@ export default function DashboardPage() {
 				</div>
 
 				{/* Statistika */}
-				<div className='grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4'>
-					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>Total Hours</p>
-						<p className='text-base sm:text-xl font-bold text-[#4E7BEE]'>
-							{stats.totalHours.toFixed(1)} hours
-						</p>
+				<div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+					<Card className='bg-[#0E1422] border-none text-white p-4'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#4E7BEE]/10 p-3 rounded-lg'>
+								<Timer className='w-6 h-6 text-[#4E7BEE]' />
+							</div>
+							<div>
+								<p className='text-gray-400 text-sm'>Total Hours</p>
+								<p className='text-xl font-semibold text-[#4E7BEE]'>
+									{stats.totalHours.toFixed(1)}h
+								</p>
+							</div>
+						</div>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>Regular Days</p>
-						<p className='text-base sm:text-xl font-bold text-[#4CC4C0]'>
-							{stats.regularDays} days
-						</p>
+
+					<Card className='bg-[#0E1422] border-none text-white p-4'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#4CC4C0]/10 p-3 rounded-lg'>
+								<CheckCircle2 className='w-6 h-6 text-[#4CC4C0]' />
+							</div>
+							<div>
+								<p className='text-gray-400 text-sm'>Regular Days</p>
+								<p className='text-xl font-semibold text-[#4CC4C0]'>
+									{stats.regularDays}d
+								</p>
+							</div>
+						</div>
 					</Card>
-					<Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<p className='text-xs sm:text-sm text-gray-400'>Overtime Days</p>
-						<p className='text-base sm:text-xl font-bold text-[#9B5DE5]'>
-							{stats.overtimeDays} days
-						</p>
+
+					<Card className='bg-[#0E1422] border-none text-white p-4'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-[#9B5DE5]/10 p-3 rounded-lg'>
+								<AlertCircle className='w-6 h-6 text-[#9B5DE5]' />
+							</div>
+							<div>
+								<p className='text-gray-400 text-sm'>Overtime Days</p>
+								<p className='text-xl font-semibold text-[#9B5DE5]'>
+									{stats.overtimeDays}d
+								</p>
+							</div>
+						</div>
 					</Card>
-					{/* <Card className='bg-[#0E1422] border-none text-white p-2 sm:p-4'>
-						<Button
-							onClick={handleDownloadPDF}
-							className='w-full bg-[#00875A] hover:bg-[#00875A]/90 text-xs sm:text-sm h-8 sm:h-10'
-						>
-							Download PDF
-						</Button>
-					</Card> */}
 				</div>
 
-				{/* Vaqt qo'shish formasi */}
+				{/* Vaqt kiritish formasi */}
 				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-3 sm:p-6'>
-						<h2 className='text-base sm:text-xl mb-3 sm:mb-4'>
+					<div className='p-4 sm:p-6'>
+						<h2 className='text-base sm:text-xl mb-4 flex items-center gap-2'>
+							<FileText className='w-5 h-5 text-[#4E7BEE]' />
 							{editingEntry ? 'Edit Time Entry' : 'Add New Time Entry'}
 						</h2>
-						<form onSubmit={handleSubmit} className='space-y-3 sm:space-y-4'>
-							<div className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4'>
-								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Date</Label>
+						<form onSubmit={handleSubmit} className='space-y-4'>
+							<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+								<div className='space-y-2'>
+									<Label className='text-sm flex items-center gap-1.5'>
+										<Calendar className='w-4 h-4 text-gray-400' />
+										Date
+									</Label>
 									<Input
 										type='date'
 										value={selectedDate.toISOString().split('T')[0]}
 										onChange={e => setSelectedDate(new Date(e.target.value))}
 										required
-										className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
+										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
 									/>
 								</div>
-								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Start Time</Label>
+								<div className='space-y-2'>
+									<Label className='text-sm flex items-center gap-1.5'>
+										<Clock className='w-4 h-4 text-gray-400' />
+										Start Time
+									</Label>
 									<TimePicker
 										value={formData.startTime}
 										onChange={time =>
@@ -371,8 +406,11 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>End Time</Label>
+								<div className='space-y-2'>
+									<Label className='text-sm flex items-center gap-1.5'>
+										<Clock className='w-4 h-4 text-gray-400' />
+										End Time
+									</Label>
 									<TimePicker
 										value={formData.endTime}
 										onChange={time =>
@@ -380,8 +418,11 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								<div className='space-y-1 sm:space-y-2'>
-									<Label className='text-xs sm:text-sm'>Break (minutes)</Label>
+								<div className='space-y-2'>
+									<Label className='text-sm flex items-center gap-1.5'>
+										<Coffee className='w-4 h-4 text-gray-400' />
+										Break (minutes)
+									</Label>
 									<Input
 										type='number'
 										min='0'
@@ -392,69 +433,69 @@ export default function DashboardPage() {
 												breakMinutes: parseInt(e.target.value) || 0,
 											})
 										}
-										className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
+										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
 									/>
 								</div>
 							</div>
-							<div className='space-y-1 sm:space-y-2'>
-								<Label className='text-xs sm:text-sm'>Description</Label>
+
+							<div className='space-y-2'>
+								<Label className='text-sm flex items-center gap-1.5'>
+									<FileText className='w-4 h-4 text-gray-400' />
+									Description
+								</Label>
 								<Input
 									value={formData.description}
 									onChange={e =>
 										setFormData({ ...formData, description: e.target.value })
 									}
-									placeholder='Brief description of work'
-									className='bg-[#1A1F2E] border-none text-white text-xs sm:text-sm h-8 sm:h-10'
+									placeholder='Enter work description'
+									className='bg-[#1A1F2E] border-none text-white text-sm h-10'
 								/>
 							</div>
-							<div className='flex gap-2 pt-2'>
+
+							<div className='flex justify-end'>
 								<Button
 									type='submit'
+									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
 									disabled={loading}
-									className='flex-1 sm:flex-none bg-gradient-to-r from-[#4E7BEE] to-[#4CC4C0] text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
 								>
-									{loading ? 'Saving...' : editingEntry ? 'Update' : 'Save'}
+									{loading ? (
+										'Saving...'
+									) : editingEntry ? (
+										<>
+											<Pencil className='w-4 h-4 mr-1' />
+											Update Entry
+										</>
+									) : (
+										<>
+											<CheckCircle2 className='w-4 h-4 mr-1' />
+											Add Entry
+										</>
+									)}
 								</Button>
-								{editingEntry && (
-									<Button
-										type='button'
-										onClick={() => {
-											setEditingEntry(null)
-											setFormData({
-												startTime: '',
-												endTime: '',
-												description: '',
-												breakMinutes: 0,
-												date: new Date().toISOString().split('T')[0],
-											})
-										}}
-										className='flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
-									>
-										Cancel
-									</Button>
-								)}
 							</div>
-							{error && (
-								<p className='text-red-500 text-xs sm:text-sm'>{error}</p>
-							)}
 						</form>
 					</div>
 				</Card>
 
-				{/* Vaqtlar ro'yxati */}
+				{/* Vaqt yozuvlari ro'yxati */}
 				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-3 sm:p-6'>
-						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-4 sm:mb-6'>
-							<h2 className='text-base sm:text-xl'>My Time Entries</h2>
-							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto'>
+					<div className='p-4 sm:p-6'>
+						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6'>
+							<h2 className='text-base sm:text-xl flex items-center gap-2'>
+								<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
+								My Time Entries
+							</h2>
+							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
 								<div className='flex items-center gap-2 w-full sm:w-auto'>
-									<Label className='text-xs sm:text-sm min-w-[30px]'>
+									<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
+										<Calendar className='w-4 h-4 text-gray-400' />
 										Month:
 									</Label>
 									<select
 										value={selectedMonth}
 										onChange={e => setSelectedMonth(parseInt(e.target.value))}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
 									>
 										{months.map(month => (
 											<option key={month.value} value={month.value}>
@@ -464,13 +505,14 @@ export default function DashboardPage() {
 									</select>
 								</div>
 								<div className='flex items-center gap-2 w-full sm:w-auto'>
-									<Label className='text-xs sm:text-sm min-w-[30px]'>
+									<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
+										<Calendar className='w-4 h-4 text-gray-400' />
 										Year:
 									</Label>
 									<select
 										value={selectedYear}
 										onChange={e => setSelectedYear(parseInt(e.target.value))}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-2 py-1 text-xs sm:text-sm h-8 sm:h-10 cursor-pointer'
+										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
 									>
 										{[2023, 2024, 2025].map(year => (
 											<option key={year} value={year}>
@@ -481,61 +523,66 @@ export default function DashboardPage() {
 								</div>
 							</div>
 						</div>
-						<div className='h-[300px] sm:h-[400px] overflow-y-auto custom-scrollbar pr-2'>
-							<div className='space-y-2 sm:space-y-4'>
+
+						<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2'>
+							<div className='space-y-4'>
 								{loading ? (
-									<p className='text-center text-gray-400 text-xs sm:text-sm'>
+									<p className='text-center text-gray-400 text-sm'>
 										Loading...
 									</p>
 								) : error ? (
-									<p className='text-center text-red-500 text-xs sm:text-sm'>
-										{error}
-									</p>
+									<p className='text-center text-red-500 text-sm'>{error}</p>
 								) : filteredEntries.length === 0 ? (
-									<p className='text-center text-gray-400 text-xs sm:text-sm'>
-										No time entries for this month
-									</p>
+									<div className='text-center text-gray-400 text-sm py-8'>
+										<XCircle className='w-12 h-12 mx-auto mb-3 opacity-50' />
+										<p>No time entries for this month</p>
+									</div>
 								) : (
 									filteredEntries.map(entry => (
 										<div
 											key={entry._id}
-											className='bg-[#1A1F2E] rounded-lg p-3 sm:p-4'
+											className='bg-[#1A1F2E] rounded-lg p-4 hover:bg-[#242B3D] transition-colors'
 										>
-											<div className='flex flex-col sm:flex-row justify-between gap-2 sm:gap-4'>
+											<div className='flex flex-col sm:flex-row justify-between gap-4'>
 												<div className='flex-1'>
-													<p className='font-medium text-sm sm:text-base mb-1'>
+													<p className='font-medium text-base mb-2 line-clamp-1'>
 														{entry.description}
 													</p>
-													<div className='text-xs text-gray-400 space-y-0.5'>
-														<p>
-															Date:{' '}
+													<div className='text-sm text-gray-400 space-y-1'>
+														<p className='flex items-center gap-2'>
+															<Calendar className='w-4 h-4' />
 															{new Date(entry.date).toLocaleDateString('en-US')}
 														</p>
-														<p>
-															Time: {formatTime(entry.startTime)} -{' '}
+														<p className='flex items-center gap-2'>
+															<Clock className='w-4 h-4' />
+															{formatTime(entry.startTime)} -{' '}
 															{formatTime(entry.endTime)}
 														</p>
-														<p>Break: {entry.breakMinutes} minutes</p>
+														<p className='flex items-center gap-2'>
+															<Timer className='w-4 h-4' />
+															{entry.hours} hours
+														</p>
+														<p className='flex items-center gap-2'>
+															<Coffee className='w-4 h-4' />
+															{entry.breakMinutes} minutes break
+														</p>
 													</div>
 												</div>
-												<div className='flex items-center gap-2 self-end sm:self-center'>
-													<p className='font-bold text-base sm:text-lg text-[#4CC4C0]'>
-														{entry.hours.toFixed(1)} hours
-													</p>
-													<div className='flex gap-1'>
-														<Button
-															onClick={() => handleEdit(entry)}
-															className='p-1.5 h-7 w-7 bg-blue-600 hover:bg-blue-700'
-														>
-															<Pencil size={14} />
-														</Button>
-														<Button
-															onClick={() => handleDelete(entry._id)}
-															className='p-1.5 h-7 w-7 bg-red-600 hover:bg-red-700'
-														>
-															<Trash2 size={14} />
-														</Button>
-													</div>
+												<div className='flex sm:flex-col gap-2 sm:gap-3'>
+													<Button
+														onClick={() => handleEdit(entry)}
+														className='flex-1 sm:flex-none bg-[#4E7BEE] hover:bg-[#4E7BEE]/90'
+														size='sm'
+													>
+														<Pencil className='w-4 h-4' />
+													</Button>
+													<Button
+														onClick={() => handleDelete(entry._id)}
+														className='flex-1 sm:flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90'
+														size='sm'
+													>
+														<Trash2 className='w-4 h-4' />
+													</Button>
 												</div>
 											</div>
 										</div>

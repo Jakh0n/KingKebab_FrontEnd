@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-	title: 'King Kebab | Tashkent',
+	title: 'King Kebab | South Korea',
 	description:
-		'Best kebab restaurant in Tashkent. Order delicious kebabs, shawarma, and other Turkish dishes.',
+		'Best kebab restaurant in South Korea. Order delicious kebabs, shawarma, and other Turkish dishes.',
 	keywords: [
 		'kebab',
 		'turkish food',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 		icon: '/cropped-kinglogo.avif',
 	},
 	openGraph: {
-		title: 'King Kebab | Seoul',
+		title: 'King Kebab | South Korea',
 		images: [
 			{
 				url: '/cropped-kinglogo.avif',
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 			'Best kebab restaurant in South Korea. Order delicious kebabs, shawarma, and other Turkish dishes.',
 		url: 'https://www.kingkebab.co.kr',
 		siteName: 'King Kebab',
-		locale: 'en_US',
+		locale: 'ko_KR',
 		type: 'website',
 	},
 }
