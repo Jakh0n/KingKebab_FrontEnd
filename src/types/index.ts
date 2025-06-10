@@ -2,7 +2,6 @@ export interface User {
 	_id: string
 	username: string
 	position: string
-	isAdmin: boolean
 }
 
 export interface TimeEntry {
@@ -12,17 +11,17 @@ export interface TimeEntry {
 	endTime: string
 	hours: number
 	date: string
-	description: string
 	position: string
-	breakMinutes: number
+	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
+	responsiblePerson?: 'Adilcan' | 'Boss' | ''
 }
 
 export interface TimeEntryFormData {
 	startTime: string
 	endTime: string
 	date: string
-	description: string
-	breakMinutes: number
+	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
+	responsiblePerson?: 'Adilcan' | 'Boss' | ''
 }
 
 export interface AuthResponse {

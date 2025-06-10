@@ -10,6 +10,7 @@ import {
 } from '@/lib/api'
 import { TimeEntry } from '@/types'
 import {
+	AlertTriangle,
 	Bike,
 	CalendarDays,
 	ChefHat,
@@ -17,11 +18,11 @@ import {
 	Clock,
 	Coffee,
 	Download,
-	FileText,
 	LogOut,
 	NotebookPen,
 	Search,
 	Timer,
+	User,
 	UserPlus,
 	Users,
 } from 'lucide-react'
@@ -461,15 +462,21 @@ export default function AdminPage() {
 															</p>
 														</div>
 													</div>
-													<div className='mt-3'>
-														<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
-															<FileText size={14} />
-															Description
-														</p>
-														<p className='font-medium text-sm sm:text-base'>
-															{entry.description}
-														</p>
-													</div>
+													{entry.hours > 12 && entry.overtimeReason && (
+														<div className='mt-3 space-y-2'>
+															<p className='text-yellow-500 text-sm flex items-center gap-1'>
+																<AlertTriangle size={14} />
+																Overtime: {entry.overtimeReason}
+															</p>
+															{entry.overtimeReason === 'Company Request' &&
+																entry.responsiblePerson && (
+																	<p className='text-blue-400 text-sm flex items-center gap-1'>
+																		<User size={14} />
+																		Responsible: {entry.responsiblePerson}
+																	</p>
+																)}
+														</div>
+													)}
 												</div>
 											))}
 									</div>

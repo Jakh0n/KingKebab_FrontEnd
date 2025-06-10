@@ -61,7 +61,12 @@ export async function addTimeEntry(
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
 	const token = localStorage.getItem('token')
-	if (!token) throw new Error('No token found')
+	if (!token) throw new Error('Not authenticated')
+
+	// Ma'lumotlarni tekshirish
+	if (!data.startTime || !data.endTime || !data.date) {
+		throw new Error("Barcha maydonlarni to'ldiring")
+	}
 
 	// Vaqtlarni to'g'ri formatga o'tkazish
 	const formattedData = {
@@ -69,7 +74,6 @@ export async function addTimeEntry(
 		startTime: data.startTime,
 		endTime: data.endTime,
 		date: data.date,
-		breakMinutes: parseInt(data.breakMinutes.toString()) || 0,
 	}
 
 	console.log('Sending data:', formattedData)
@@ -208,25 +212,32 @@ export async function deleteTimeEntry(entryId: string): Promise<void> {
 }
 
 export async function updateTimeEntry(
-	entryId: string,
-	data: {
-		startTime: string
-		endTime: string
-		date: string
-		description: string
-		breakMinutes: number
-	}
+	id: string,
+	data: TimeEntryFormData
 ): Promise<TimeEntry> {
 	const token = localStorage.getItem('token')
-	if (!token) throw new Error('No token found')
+	if (!token) throw new Error('Not authenticated')
 
-	const response = await fetch(`${API_URL}/time/${entryId}`, {
+	// Ma'lumotlarni tekshirish
+	if (!data.startTime || !data.endTime || !data.date) {
+		throw new Error("Barcha maydonlarni to'ldiring")
+	}
+
+	// Vaqtlarni to'g'ri formatga o'tkazish
+	const formattedData = {
+		...data,
+		startTime: data.startTime,
+		endTime: data.endTime,
+		date: data.date,
+	}
+
+	const response = await fetch(`${API_URL}/time/${id}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`,
 		},
-		body: JSON.stringify(data),
+		body: JSON.stringify(formattedData),
 	})
 
 	return handleResponse<TimeEntry>(response)

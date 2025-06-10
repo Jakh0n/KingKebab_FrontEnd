@@ -13,21 +13,21 @@ import {
 } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
-	AlertCircle,
+	AlertTriangle,
 	Calendar,
 	CalendarDays,
 	CheckCircle2,
 	Clock,
-	Coffee,
 	FileText,
 	LogOut,
 	Pencil,
 	Timer,
 	Trash2,
+	User,
 	XCircle,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TimePicker } from '../../components/ui/time-picker'
 
 export default function DashboardPage() {
@@ -45,13 +45,37 @@ export default function DashboardPage() {
 		startTime: '',
 		endTime: '',
 		date: new Date().toISOString().split('T')[0],
-		description: '',
-		breakMinutes: 0,
+		overtimeReason: null,
+		responsiblePerson: '',
 	})
 	const [selectedDate, setSelectedDate] = useState(new Date())
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 	const router = useRouter()
 	const [isLoading, setIsLoading] = useState(false)
+
+	// Soatlarni hisoblash funksiyasi
+	const calculateHours = useCallback(
+		(startTime: string, endTime: string): number => {
+			const [startHours, startMinutes] = startTime.split(':').map(Number)
+			const [endHours, endMinutes] = endTime.split(':').map(Number)
+
+			let hours = endHours - startHours
+			const minutes = (endMinutes - startMinutes) / 60
+
+			if (hours < 0) {
+				hours = 24 + hours
+			}
+
+			return hours + minutes
+		},
+		[]
+	)
+
+	// Ish vaqtidan tashqari ishlash tekshiruvi
+	const isOvertime = useMemo(() => {
+		if (!formData.startTime || !formData.endTime) return false
+		return calculateHours(formData.startTime, formData.endTime) > 12
+	}, [formData.startTime, formData.endTime, calculateHours])
 
 	const loadEntries = useCallback(async () => {
 		try {
@@ -106,16 +130,15 @@ export default function DashboardPage() {
 		}
 	}, [selectedMonth, selectedYear, loadEntries, userData])
 
-	function handleLogout() {
+	const handleLogout = useCallback(() => {
 		setIsLoading(true)
 		logout()
 		router.push('/login')
 		setIsLoading(false)
-	}
+	}, [router])
 
 	// Tahrirlash funksiyasi
-	const handleEdit = (entry: TimeEntry) => {
-		setEditingEntry(entry)
+	const handleEditEntry = useCallback((entry: TimeEntry) => {
 		const startTime = new Date(entry.startTime).toLocaleTimeString('en-US', {
 			hour: '2-digit',
 			minute: '2-digit',
@@ -131,126 +154,121 @@ export default function DashboardPage() {
 			startTime,
 			endTime,
 			date: new Date(entry.date).toISOString().split('T')[0],
-			description: entry.description,
-			breakMinutes: entry.breakMinutes,
+			overtimeReason: entry.overtimeReason,
+			responsiblePerson: entry.responsiblePerson,
 		})
 		setSelectedDate(new Date(entry.date))
-	}
+		setEditingEntry(entry)
+	}, [])
 
 	// O'chirish funksiyasi
-	const handleDelete = async (entryId: string) => {
-		if (!confirm("Rostdan ham bu vaqt yozuvini o'chirmoqchimisiz?")) {
-			return
-		}
+	const handleDelete = useCallback(
+		async (entryId: string) => {
+			if (!confirm("Rostdan ham bu vaqt yozuvini o'chirmoqchimisiz?")) {
+				return
+			}
 
-		try {
-			await deleteTimeEntry(entryId)
-			// Ma'lumotlarni yangilash
-			setEntries(entries.filter(entry => entry._id !== entryId))
-		} catch (error) {
-			console.error('Error:', error)
-			setError(
-				error instanceof Error ? error.message : "O'chirishda xatolik yuz berdi"
-			)
-		}
-	}
+			try {
+				await deleteTimeEntry(entryId)
+				// Ma'lumotlarni yangilash
+				setEntries(entries.filter(entry => entry._id !== entryId))
+			} catch (error) {
+				console.error('Error:', error)
+				setError(
+					error instanceof Error
+						? error.message
+						: "O'chirishda xatolik yuz berdi"
+				)
+			}
+		},
+		[entries]
+	)
 
 	// Submit funksiyasini yangilash
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault()
-		setLoading(true)
-		setError('')
+	const handleSubmit = useCallback(
+		async (e: React.FormEvent) => {
+			e.preventDefault()
+			setError('')
+			setLoading(true)
 
-		try {
-			if (!formData.startTime || !formData.endTime) {
-				throw new Error('Boshlash va tugatish vaqtlarini kiriting')
-			}
+			try {
+				const startDate = new Date(selectedDate)
+				const endDate = new Date(selectedDate)
 
-			// Vaqtlarni to'g'ri formatga o'tkazish
-			const [startHours, startMinutes] = formData.startTime.split(':')
-			const [endHours, endMinutes] = formData.endTime.split(':')
+				const [startHours, startMinutes] = formData.startTime.split(':')
+				const [endHours, endMinutes] = formData.endTime.split(':')
 
-			// Boshlang'ich sana obyektini yaratish
-			const startDate = new Date(selectedDate)
-			startDate.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0)
+				startDate.setHours(parseInt(startHours), parseInt(startMinutes))
+				endDate.setHours(parseInt(endHours), parseInt(endMinutes))
 
-			// Tugash sana obyektini yaratish
-			const endDate = new Date(selectedDate)
-			endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0, 0)
+				if (endDate < startDate) {
+					endDate.setDate(endDate.getDate() + 1)
+				}
 
-			// Agar tugash vaqti boshlang'ich vaqtdan kichik bo'lsa
-			// (masalan, 23:00 - 01:00), tugash vaqtiga bir kun qo'shamiz
-			if (endDate < startDate) {
-				endDate.setDate(endDate.getDate() + 1)
-			}
+				let overtimeReason = null
+				let responsiblePerson: '' | 'Adilcan' | 'Boss' = ''
 
-			// Vaqt farqini milliskundlarda hisoblash
-			const timeDiff = endDate.getTime() - startDate.getTime()
+				if (isOvertime) {
+					overtimeReason = formData.overtimeReason
+					if (
+						overtimeReason === 'Company Request' &&
+						!formData.responsiblePerson
+					) {
+						throw new Error("Mas'ul shaxsni tanlang")
+					}
+					responsiblePerson = formData.responsiblePerson || ''
+				}
 
-			// Vaqt farqini soatlarga aylantirish
-			const hoursDiff = timeDiff / (1000 * 60 * 60)
+				const data: TimeEntryFormData = {
+					startTime: startDate.toISOString(),
+					endTime: endDate.toISOString(),
+					date: selectedDate.toISOString().split('T')[0],
+					overtimeReason,
+					responsiblePerson,
+				}
 
-			// Agar vaqt farqi manfiy yoki 24 soatdan ko'p bo'lsa
-			if (hoursDiff < 0 || hoursDiff > 24) {
-				throw new Error("Noto'g'ri vaqt oralig'i kiritildi")
-			}
-
-			const data = {
-				startTime: startDate.toISOString(),
-				endTime: endDate.toISOString(),
-				date: selectedDate.toISOString().split('T')[0],
-				description: formData.description,
-				breakMinutes: parseInt(formData.breakMinutes.toString()) || 0,
-			}
-
-			console.log('Preparing data:', {
-				...data,
-				startTimeLocal: startDate.toLocaleString(),
-				endTimeLocal: endDate.toLocaleString(),
-				dateLocal: selectedDate.toLocaleString(),
-			})
-
-			let updatedEntry: TimeEntry
-			if (editingEntry) {
-				updatedEntry = await updateTimeEntry(editingEntry._id, data)
-				setEntries(
-					entries.map(entry =>
-						entry._id === editingEntry._id ? updatedEntry : entry
+				let updatedEntry: TimeEntry
+				if (editingEntry) {
+					updatedEntry = await updateTimeEntry(editingEntry._id, data)
+					setEntries(
+						entries.map(entry =>
+							entry._id === editingEntry._id ? updatedEntry : entry
+						)
 					)
-				)
-			} else {
-				updatedEntry = await addTimeEntry(data)
-				setEntries([...entries, updatedEntry])
-			}
+				} else {
+					updatedEntry = await addTimeEntry(data)
+					setEntries([...entries, updatedEntry])
+				}
 
-			// Formani tozalash
-			setFormData({
-				startTime: '',
-				endTime: '',
-				description: '',
-				breakMinutes: 0,
-				date: new Date().toISOString().split('T')[0],
-			})
-			setEditingEntry(null)
-		} catch (error) {
-			console.error('Error:', error)
-			setError(
-				error instanceof Error
-					? error.message
-					: "Vaqt qo'shishda xatolik yuz berdi"
-			)
-		} finally {
-			setLoading(false)
-		}
-	}
+				setFormData({
+					startTime: '',
+					endTime: '',
+					date: new Date().toISOString().split('T')[0],
+					overtimeReason: null,
+					responsiblePerson: '',
+				})
+				setEditingEntry(null)
+			} catch (error) {
+				console.error('Error:', error)
+				setError(
+					error instanceof Error
+						? error.message
+						: "Vaqt qo'shishda xatolik yuz berdi"
+				)
+			} finally {
+				setLoading(false)
+			}
+		},
+		[selectedDate, formData, isOvertime, editingEntry, entries]
+	)
 
 	// Vaqtlarni formatlash
-	function formatTime(timeStr: string) {
+	const formatTime = useCallback((timeStr: string) => {
 		return new Date(timeStr).toLocaleTimeString('uz-UZ', {
 			hour: '2-digit',
 			minute: '2-digit',
 		})
-	}
+	}, [])
 
 	// PDF yuklab olish funksiyasi
 	// async function handleDownloadPDF() {
@@ -262,39 +280,50 @@ export default function DashboardPage() {
 	// 	}
 	// }
 
-	// Tanlangan oyning vaqtlarini filterlash
-	const filteredEntries = entries
-		.filter(entry => {
-			const entryDate = new Date(entry.date)
-			return (
-				entryDate.getMonth() + 1 === selectedMonth &&
-				entryDate.getFullYear() === selectedYear
-			)
-		})
-		.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+	// Tanlangan oyning vaqtlarini filterlash va statistikani hisoblash
+	const { filteredEntries, stats } = useMemo(() => {
+		const filtered = entries
+			.filter(entry => {
+				const entryDate = new Date(entry.date)
+				return (
+					entryDate.getMonth() + 1 === selectedMonth &&
+					entryDate.getFullYear() === selectedYear
+				)
+			})
+			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-	// Statistikani hisoblash
-	const stats = {
-		totalHours: filteredEntries.reduce((sum, entry) => sum + entry.hours, 0),
-		regularDays: filteredEntries.filter(entry => entry.hours <= 12).length,
-		overtimeDays: filteredEntries.filter(entry => entry.hours > 12).length,
-	}
+		const totalHours = filtered.reduce((sum, entry) => sum + entry.hours, 0)
+		const regularDays = filtered.filter(entry => entry.hours <= 12).length
+		const overtimeDays = filtered.filter(entry => entry.hours > 12).length
+
+		return {
+			filteredEntries: filtered,
+			stats: {
+				totalHours,
+				regularDays,
+				overtimeDays,
+			},
+		}
+	}, [entries, selectedMonth, selectedYear])
 
 	// Oylar ro'yxati
-	const months = [
-		{ value: 1, label: 'January' },
-		{ value: 2, label: 'February' },
-		{ value: 3, label: 'March' },
-		{ value: 4, label: 'April' },
-		{ value: 5, label: 'May' },
-		{ value: 6, label: 'June' },
-		{ value: 7, label: 'July' },
-		{ value: 8, label: 'August' },
-		{ value: 9, label: 'September' },
-		{ value: 10, label: 'October' },
-		{ value: 11, label: 'November' },
-		{ value: 12, label: 'December' },
-	]
+	const months = useMemo(
+		() => [
+			{ value: 1, label: 'January' },
+			{ value: 2, label: 'February' },
+			{ value: 3, label: 'March' },
+			{ value: 4, label: 'April' },
+			{ value: 5, label: 'May' },
+			{ value: 6, label: 'June' },
+			{ value: 7, label: 'July' },
+			{ value: 8, label: 'August' },
+			{ value: 9, label: 'September' },
+			{ value: 10, label: 'October' },
+			{ value: 11, label: 'November' },
+			{ value: 12, label: 'December' },
+		],
+		[]
+	)
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
@@ -359,12 +388,12 @@ export default function DashboardPage() {
 
 					<Card className='bg-[#0E1422] border-none text-white p-4'>
 						<div className='flex items-center gap-3'>
-							<div className='bg-[#9B5DE5]/10 p-3 rounded-lg'>
-								<AlertCircle className='w-6 h-6 text-[#9B5DE5]' />
+							<div className='bg-[#FF3B6F]/10 p-3 rounded-lg'>
+								<AlertTriangle className='w-6 h-6 text-[#FF3B6F]' />
 							</div>
 							<div>
 								<p className='text-gray-400 text-sm'>Overtime Days</p>
-								<p className='text-xl font-semibold text-[#9B5DE5]'>
+								<p className='text-xl font-semibold text-[#FF3B6F]'>
 									{stats.overtimeDays}d
 								</p>
 							</div>
@@ -418,7 +447,7 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								<div className='space-y-2'>
+								{/* <div className='space-y-2'>
 									<Label className='text-sm flex items-center gap-1.5'>
 										<Coffee className='w-4 h-4 text-gray-400' />
 										Break (minutes)
@@ -435,10 +464,10 @@ export default function DashboardPage() {
 										}
 										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
 									/>
-								</div>
+								</div> */}
 							</div>
 
-							<div className='space-y-2'>
+							{/* <div className='space-y-2'>
 								<Label className='text-sm flex items-center gap-1.5'>
 									<FileText className='w-4 h-4 text-gray-400' />
 									Description
@@ -451,7 +480,65 @@ export default function DashboardPage() {
 									placeholder='Enter work description'
 									className='bg-[#1A1F2E] border-none text-white text-sm h-10'
 								/>
-							</div>
+							</div> */}
+
+							{/* Ish vaqtidan tashqari ishlash sababi */}
+							{isOvertime && (
+								<div className='space-y-4'>
+									<div className='space-y-2'>
+										<Label className='text-sm flex items-center gap-1.5'>
+											<AlertTriangle className='w-4 h-4 text-yellow-500' />
+											Overtime Reason
+										</Label>
+										<select
+											value={formData.overtimeReason || ''}
+											onChange={e =>
+												setFormData({
+													...formData,
+													overtimeReason: e.target
+														.value as TimeEntry['overtimeReason'],
+													responsiblePerson:
+														e.target.value === 'Company Request'
+															? formData.responsiblePerson
+															: '',
+												})
+											}
+											className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
+											required
+										>
+											<option value=''>Select reason</option>
+											<option value='Busy'>Busy</option>
+											<option value='Last Order'>Last Order</option>
+											<option value='Company Request'>Company Request</option>
+										</select>
+									</div>
+
+									{formData.overtimeReason === 'Company Request' && (
+										<div className='space-y-2'>
+											<Label className='text-sm flex items-center gap-1.5'>
+												<User className='w-4 h-4 text-gray-400' />
+												Responsible Person
+											</Label>
+											<select
+												value={formData.responsiblePerson || ''}
+												onChange={e =>
+													setFormData({
+														...formData,
+														responsiblePerson: e.target
+															.value as TimeEntry['responsiblePerson'],
+													})
+												}
+												className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
+												required
+											>
+												<option value=''>Select person</option>
+												<option value='Adilcan'>Adilcan</option>
+												<option value='Boss'>Boss</option>
+											</select>
+										</div>
+									)}
+								</div>
+							)}
 
 							<div className='flex justify-end'>
 								<Button
@@ -545,9 +632,21 @@ export default function DashboardPage() {
 										>
 											<div className='flex flex-col sm:flex-row justify-between gap-4'>
 												<div className='flex-1'>
-													<p className='font-medium text-base mb-2 line-clamp-1'>
-														{entry.description}
-													</p>
+													<div className='flex items-center justify-between mb-2'>
+														{entry.hours > 12 && (
+															<div className='flex items-center gap-2 text-yellow-500'>
+																<AlertTriangle className='w-4 h-4' />
+																<span className='text-sm'>
+																	{entry.overtimeReason}
+																</span>
+																{entry.overtimeReason === 'Company Request' && (
+																	<span className='text-blue-400 text-sm'>
+																		({entry.responsiblePerson})
+																	</span>
+																)}
+															</div>
+														)}
+													</div>
 													<div className='text-sm text-gray-400 space-y-1'>
 														<p className='flex items-center gap-2'>
 															<Calendar className='w-4 h-4' />
@@ -562,24 +661,22 @@ export default function DashboardPage() {
 															<Timer className='w-4 h-4' />
 															{entry.hours} hours
 														</p>
-														<p className='flex items-center gap-2'>
-															<Coffee className='w-4 h-4' />
-															{entry.breakMinutes} minutes break
-														</p>
 													</div>
 												</div>
-												<div className='flex sm:flex-col gap-2 sm:gap-3'>
+												<div className='flex items-center gap-2'>
 													<Button
-														onClick={() => handleEdit(entry)}
-														className='flex-1 sm:flex-none bg-[#4E7BEE] hover:bg-[#4E7BEE]/90'
-														size='sm'
+														variant='ghost'
+														size='icon'
+														onClick={() => handleEditEntry(entry)}
+														className='hover:bg-[#2A3447]'
 													>
 														<Pencil className='w-4 h-4' />
 													</Button>
 													<Button
+														variant='ghost'
+														size='icon'
 														onClick={() => handleDelete(entry._id)}
-														className='flex-1 sm:flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90'
-														size='sm'
+														className='hover:bg-[#2A3447] text-red-500 hover:text-red-600'
 													>
 														<Trash2 className='w-4 h-4' />
 													</Button>
