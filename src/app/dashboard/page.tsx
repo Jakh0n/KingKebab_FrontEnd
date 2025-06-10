@@ -1,5 +1,6 @@
 'use client'
 
+import { EditTimeEntryModal } from '@/components/EditTimeEntryModal'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,7 +10,6 @@ import {
 	deleteTimeEntry,
 	getMyTimeEntries,
 	logout,
-	updateTimeEntry,
 } from '@/lib/api'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
@@ -52,6 +52,7 @@ export default function DashboardPage() {
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 	const router = useRouter()
 	const [isLoading, setIsLoading] = useState(false)
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
 	// Soatlarni hisoblash funksiyasi
 	const calculateHours = useCallback(
@@ -139,27 +140,27 @@ export default function DashboardPage() {
 
 	// Tahrirlash funksiyasi
 	const handleEditEntry = useCallback((entry: TimeEntry) => {
-		const startTime = new Date(entry.startTime).toLocaleTimeString('en-US', {
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false,
-		})
-		const endTime = new Date(entry.endTime).toLocaleTimeString('en-US', {
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false,
-		})
-
-		setFormData({
-			startTime,
-			endTime,
-			date: new Date(entry.date).toISOString().split('T')[0],
-			overtimeReason: entry.overtimeReason,
-			responsiblePerson: entry.responsiblePerson,
-		})
-		setSelectedDate(new Date(entry.date))
 		setEditingEntry(entry)
+		setIsEditModalOpen(true)
 	}, [])
+
+	// Modal yopilganda
+	const handleModalClose = useCallback(() => {
+		setIsEditModalOpen(false)
+		setEditingEntry(null)
+	}, [])
+
+	// Yozuv yangilanganda
+	const handleEntryUpdate = useCallback(
+		(updatedEntry: TimeEntry) => {
+			setEntries(
+				entries.map(entry =>
+					entry._id === updatedEntry._id ? updatedEntry : entry
+				)
+			)
+		},
+		[entries]
+	)
 
 	// O'chirish funksiyasi
 	const handleDelete = useCallback(
@@ -184,7 +185,7 @@ export default function DashboardPage() {
 		[entries]
 	)
 
-	// Submit funksiyasini yangilash
+	// Submit funksiyasi
 	const handleSubmit = useCallback(
 		async (e: React.FormEvent) => {
 			e.preventDefault()
@@ -227,19 +228,10 @@ export default function DashboardPage() {
 					responsiblePerson,
 				}
 
-				let updatedEntry: TimeEntry
-				if (editingEntry) {
-					updatedEntry = await updateTimeEntry(editingEntry._id, data)
-					setEntries(
-						entries.map(entry =>
-							entry._id === editingEntry._id ? updatedEntry : entry
-						)
-					)
-				} else {
-					updatedEntry = await addTimeEntry(data)
-					setEntries([...entries, updatedEntry])
-				}
+				const newEntry = await addTimeEntry(data)
+				setEntries([...entries, newEntry])
 
+				// Formani tozalash
 				setFormData({
 					startTime: '',
 					endTime: '',
@@ -247,19 +239,23 @@ export default function DashboardPage() {
 					overtimeReason: null,
 					responsiblePerson: '',
 				})
-				setEditingEntry(null)
+
+				// Loading holatini o'zgartirish
+				setLoading(false)
+
+				// Xatolik xabarini tozalash
+				setError('')
 			} catch (error) {
 				console.error('Error:', error)
 				setError(
 					error instanceof Error
 						? error.message
-						: "Vaqt qo'shishda xatolik yuz berdi"
+						: "Ma'lumotlarni saqlashda xatolik"
 				)
-			} finally {
 				setLoading(false)
 			}
 		},
-		[selectedDate, formData, isOvertime, editingEntry, entries]
+		[selectedDate, formData, isOvertime, entries]
 	)
 
 	// Vaqtlarni formatlash
@@ -406,7 +402,7 @@ export default function DashboardPage() {
 					<div className='p-4 sm:p-6'>
 						<h2 className='text-base sm:text-xl mb-4 flex items-center gap-2'>
 							<FileText className='w-5 h-5 text-[#4E7BEE]' />
-							{editingEntry ? 'Edit Time Entry' : 'Add New Time Entry'}
+							Add New Time Entry
 						</h2>
 						<form onSubmit={handleSubmit} className='space-y-4'>
 							<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -447,40 +443,7 @@ export default function DashboardPage() {
 										}
 									/>
 								</div>
-								{/* <div className='space-y-2'>
-									<Label className='text-sm flex items-center gap-1.5'>
-										<Coffee className='w-4 h-4 text-gray-400' />
-										Break (minutes)
-									</Label>
-									<Input
-										type='number'
-										min='0'
-										value={formData.breakMinutes}
-										onChange={e =>
-											setFormData({
-												...formData,
-												breakMinutes: parseInt(e.target.value) || 0,
-											})
-										}
-										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
-									/>
-								</div> */}
 							</div>
-
-							{/* <div className='space-y-2'>
-								<Label className='text-sm flex items-center gap-1.5'>
-									<FileText className='w-4 h-4 text-gray-400' />
-									Description
-								</Label>
-								<Input
-									value={formData.description}
-									onChange={e =>
-										setFormData({ ...formData, description: e.target.value })
-									}
-									placeholder='Enter work description'
-									className='bg-[#1A1F2E] border-none text-white text-sm h-10'
-								/>
-							</div> */}
 
 							{/* Ish vaqtidan tashqari ishlash sababi */}
 							{isOvertime && (
@@ -540,22 +503,21 @@ export default function DashboardPage() {
 								</div>
 							)}
 
-							<div className='flex justify-end'>
+							{/* Submit tugmasi */}
+							<div className='flex justify-end gap-2'>
 								<Button
 									type='submit'
-									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
+									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white gap-2'
 									disabled={loading}
 								>
 									{loading ? (
-										'Saving...'
-									) : editingEntry ? (
 										<>
-											<Pencil className='w-4 h-4 mr-1' />
-											Update Entry
+											<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white'></div>
+											Saving...
 										</>
 									) : (
 										<>
-											<CheckCircle2 className='w-4 h-4 mr-1' />
+											<CheckCircle2 className='w-4 h-4' />
 											Add Entry
 										</>
 									)}
@@ -612,84 +574,170 @@ export default function DashboardPage() {
 						</div>
 
 						<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2'>
-							<div className='space-y-4'>
-								{loading ? (
-									<p className='text-center text-gray-400 text-sm'>
-										Loading...
-									</p>
-								) : error ? (
-									<p className='text-center text-red-500 text-sm'>{error}</p>
-								) : filteredEntries.length === 0 ? (
-									<div className='text-center text-gray-400 text-sm py-8'>
-										<XCircle className='w-12 h-12 mx-auto mb-3 opacity-50' />
-										<p>No time entries for this month</p>
-									</div>
-								) : (
-									filteredEntries.map(entry => (
-										<div
-											key={entry._id}
-											className='bg-[#1A1F2E] rounded-lg p-4 hover:bg-[#242B3D] transition-colors'
-										>
-											<div className='flex flex-col sm:flex-row justify-between gap-4'>
-												<div className='flex-1'>
-													<div className='flex items-center justify-between mb-2'>
-														{entry.hours > 12 && (
-															<div className='flex items-center gap-2 text-yellow-500'>
-																<AlertTriangle className='w-4 h-4' />
-																<span className='text-sm'>
-																	{entry.overtimeReason}
-																</span>
-																{entry.overtimeReason === 'Company Request' && (
-																	<span className='text-blue-400 text-sm'>
-																		({entry.responsiblePerson})
-																	</span>
-																)}
+							{loading ? (
+								<p className='text-center text-gray-400 text-sm'>Loading...</p>
+							) : error ? (
+								<p className='text-center text-red-500 text-sm'>{error}</p>
+							) : filteredEntries.length === 0 ? (
+								<div className='text-center text-gray-400 text-sm py-8'>
+									<XCircle className='w-12 h-12 mx-auto mb-3 opacity-50' />
+									<p>No time entries for this month</p>
+								</div>
+							) : (
+								<div className='space-y-4'>
+									{filteredEntries.map(entry => {
+										const isOvertime = entry.hours > 12
+										return (
+											<div
+												key={entry._id}
+												className={`bg-gradient-to-r ${
+													isOvertime
+														? 'from-[#1A1F2E] to-yellow-950/10 border-l-4 border-l-yellow-500'
+														: 'from-[#1A1F2E] to-[#1A1F2E] border-l-4 border-l-emerald-500'
+												} rounded-lg transition-all duration-300 hover:shadow-lg`}
+											>
+												<div className='p-5'>
+													{/* Yuqori qism: Sana, Status va Amallar */}
+													<div className='flex items-center justify-between mb-4'>
+														<div className='flex items-center gap-3'>
+															<div className='bg-[#4E7BEE]/10 p-2.5 rounded-lg'>
+																<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
+															</div>
+															<div>
+																<p className='text-sm text-gray-400'>Date</p>
+																<p className='font-medium'>
+																	{new Date(entry.date).toLocaleDateString(
+																		'en-US',
+																		{
+																			weekday: 'short',
+																			month: 'short',
+																			day: 'numeric',
+																		}
+																	)}
+																</p>
+															</div>
+														</div>
+														<div className='flex items-center gap-3'>
+															<div
+																className={`px-3 py-1.5 rounded-full ${
+																	isOvertime
+																		? 'bg-yellow-500/10'
+																		: 'bg-emerald-500/10'
+																}`}
+															>
+																<p
+																	className={`text-sm font-medium ${
+																		isOvertime
+																			? 'text-yellow-500'
+																			: 'text-emerald-500'
+																	}`}
+																>
+																	{isOvertime ? 'Overtime' : 'Regular'}
+																</p>
+															</div>
+															<div className='flex gap-1'>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	onClick={() => handleEditEntry(entry)}
+																	className='hover:bg-[#2A3447] h-8 w-8 text-[#4E7BEE] hover:text-[#4E7BEE]/80'
+																>
+																	<Pencil className='w-4 h-4' />
+																</Button>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	onClick={() => handleDelete(entry._id)}
+																	className='hover:bg-[#2A3447] text-red-500 hover:text-red-600 h-8 w-8'
+																>
+																	<Trash2 className='w-4 h-4' />
+																</Button>
+															</div>
+														</div>
+													</div>
+
+													{/* Asosiy ma'lumotlar */}
+													<div className='space-y-4'>
+														{/* Ish vaqti */}
+														<div className='flex items-center gap-4 bg-[#0E1422] p-4 rounded-lg'>
+															<div className='bg-[#4CC4C0]/10 p-2.5 rounded-lg'>
+																<Clock className='w-5 h-5 text-[#4CC4C0]' />
+															</div>
+															<div className='flex-1'>
+																<p className='text-sm text-gray-400'>
+																	Working Hours
+																</p>
+																<div className='flex items-center justify-between'>
+																	<p className='font-medium text-[#4CC4C0]'>
+																		{formatTime(entry.startTime)} -{' '}
+																		{formatTime(entry.endTime)}
+																	</p>
+																	<p className='text-[#4E7BEE] font-medium'>
+																		{entry.hours.toFixed(1)} hours
+																	</p>
+																</div>
+															</div>
+														</div>
+
+														{/* Overtime ma'lumotlari */}
+														{isOvertime && entry.overtimeReason && (
+															<div className='relative'>
+																<div className='absolute left-4 top-0 bottom-0 w-0.5 bg-yellow-500/20'></div>
+																<div className='space-y-4 pl-8'>
+																	{/* Overtime sababi */}
+																	<div className='flex items-center gap-3'>
+																		<div className='bg-yellow-500/10 p-2.5 rounded-lg'>
+																			<AlertTriangle className='w-5 h-5 text-yellow-500' />
+																		</div>
+																		<div>
+																			<p className='text-sm text-gray-400'>
+																				Overtime Reason
+																			</p>
+																			<p className='font-medium text-yellow-500'>
+																				{entry.overtimeReason}
+																			</p>
+																		</div>
+																	</div>
+
+																	{/* Mas'ul shaxs */}
+																	{entry.overtimeReason === 'Company Request' &&
+																		entry.responsiblePerson && (
+																			<div className='flex items-center gap-3'>
+																				<div className='bg-blue-500/10 p-2.5 rounded-lg'>
+																					<User className='w-5 h-5 text-blue-500' />
+																				</div>
+																				<div>
+																					<p className='text-sm text-gray-400'>
+																						Responsible Person
+																					</p>
+																					<p className='font-medium text-blue-500'>
+																						{entry.responsiblePerson}
+																					</p>
+																				</div>
+																			</div>
+																		)}
+																</div>
 															</div>
 														)}
 													</div>
-													<div className='text-sm text-gray-400 space-y-1'>
-														<p className='flex items-center gap-2'>
-															<Calendar className='w-4 h-4' />
-															{new Date(entry.date).toLocaleDateString('en-US')}
-														</p>
-														<p className='flex items-center gap-2'>
-															<Clock className='w-4 h-4' />
-															{formatTime(entry.startTime)} -{' '}
-															{formatTime(entry.endTime)}
-														</p>
-														<p className='flex items-center gap-2'>
-															<Timer className='w-4 h-4' />
-															{entry.hours} hours
-														</p>
-													</div>
-												</div>
-												<div className='flex items-center gap-2'>
-													<Button
-														variant='ghost'
-														size='icon'
-														onClick={() => handleEditEntry(entry)}
-														className='hover:bg-[#2A3447]'
-													>
-														<Pencil className='w-4 h-4' />
-													</Button>
-													<Button
-														variant='ghost'
-														size='icon'
-														onClick={() => handleDelete(entry._id)}
-														className='hover:bg-[#2A3447] text-red-500 hover:text-red-600'
-													>
-														<Trash2 className='w-4 h-4' />
-													</Button>
 												</div>
 											</div>
-										</div>
-									))
-								)}
-							</div>
+										)
+									})}
+								</div>
+							)}
 						</div>
 					</div>
 				</Card>
 			</div>
+
+			{/* Edit Modal */}
+			<EditTimeEntryModal
+				isOpen={isEditModalOpen}
+				onClose={handleModalClose}
+				entry={editingEntry}
+				onUpdate={handleEntryUpdate}
+			/>
 		</main>
 	)
 }

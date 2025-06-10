@@ -12,6 +12,7 @@ export interface TimeEntry {
 	hours: number
 	date: string
 	position: string
+	breakMinutes?: number
 	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
 	responsiblePerson?: 'Adilcan' | 'Boss' | ''
 }

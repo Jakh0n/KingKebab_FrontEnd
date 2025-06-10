@@ -16,7 +16,6 @@ import {
 	ChefHat,
 	ChevronRight,
 	Clock,
-	Coffee,
 	Download,
 	LogOut,
 	NotebookPen,
@@ -416,69 +415,119 @@ export default function AdminPage() {
 											.filter(
 												entry => entry.user && entry.user._id === selectedWorker
 											)
-											.map(entry => (
-												<div
-													key={entry._id}
-													className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg hover:bg-[#242B3D] transition-all duration-300'
-												>
-													<div className='grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4'>
-														<div>
-															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
-																<CalendarDays size={14} />
-																Date
-															</p>
-															<p className='font-medium text-sm sm:text-base'>
-																{new Date(entry.date).toLocaleDateString(
-																	'en-US'
-																)}
-															</p>
-														</div>
-														<div>
-															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
-																<Clock size={14} />
-																Time
-															</p>
-															<p className='font-medium text-sm sm:text-base'>
-																{formatTime(entry.startTime)} -{' '}
-																{formatTime(entry.endTime)}
-															</p>
-														</div>
-														<div>
-															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
-																<Timer size={14} />
-																Hours Worked
-															</p>
-															<p className='font-medium text-sm sm:text-base text-[#4E7BEE]'>
-																{entry.hours.toFixed(1)} hours
-															</p>
-														</div>
-														<div>
-															<p className='text-gray-400 text-xs sm:text-sm flex items-center gap-1'>
-																<Coffee size={14} />
-																Break
-															</p>
-															<p className='font-medium text-sm sm:text-base'>
-																{entry.breakMinutes} minutes
-															</p>
+											.map(entry => {
+												const isOvertime = entry.hours > 12
+												return (
+													<div
+														key={entry._id}
+														className={`bg-[#1A1F2E] p-4 rounded-lg transition-all duration-300 border ${
+															isOvertime
+																? 'border-yellow-500/20'
+																: 'border-gray-800'
+														} hover:bg-[#242B3D]`}
+													>
+														<div className='flex flex-col gap-4'>
+															{/* Sana va Soatlar */}
+															<div className='flex items-center justify-between'>
+																<div className='flex items-center gap-3'>
+																	<div className='bg-[#4E7BEE]/10 p-2.5 rounded-lg'>
+																		<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
+																	</div>
+																	<div>
+																		<p className='text-sm text-gray-400'>
+																			Date
+																		</p>
+																		<p className='font-medium'>
+																			{new Date(entry.date).toLocaleDateString(
+																				'en-US',
+																				{
+																					weekday: 'short',
+																					month: 'short',
+																					day: 'numeric',
+																				}
+																			)}
+																		</p>
+																	</div>
+																</div>
+																<div className='flex flex-col items-end gap-1'>
+																	<div
+																		className={`px-3 py-1 rounded-full ${
+																			isOvertime
+																				? 'bg-yellow-500/10'
+																				: 'bg-emerald-500/10'
+																		}`}
+																	>
+																		<p
+																			className={`text-sm font-medium ${
+																				isOvertime
+																					? 'text-yellow-500'
+																					: 'text-emerald-500'
+																			}`}
+																		>
+																			{isOvertime ? 'Overtime' : 'Regular'}
+																		</p>
+																	</div>
+																	<p className='text-[#4E7BEE] text-sm font-medium'>
+																		{entry.hours.toFixed(1)} hours
+																	</p>
+																</div>
+															</div>
+
+															{/* Ish vaqti */}
+															<div className='flex items-center gap-3 bg-[#0E1422] p-3 rounded-lg'>
+																<div className='bg-[#4CC4C0]/10 p-2.5 rounded-lg'>
+																	<Clock className='w-5 h-5 text-[#4CC4C0]' />
+																</div>
+																<div>
+																	<p className='text-sm text-gray-400'>
+																		Working Hours
+																	</p>
+																	<p className='font-medium text-[#4CC4C0]'>
+																		{formatTime(entry.startTime)} -{' '}
+																		{formatTime(entry.endTime)}
+																	</p>
+																</div>
+															</div>
+
+															{/* Overtime ma'lumotlari */}
+															{isOvertime && entry.overtimeReason && (
+																<div className='bg-yellow-500/5 p-4 rounded-lg border border-yellow-500/10 space-y-3'>
+																	<div className='flex items-center gap-3'>
+																		<div className='bg-yellow-500/10 p-2.5 rounded-lg'>
+																			<AlertTriangle className='w-5 h-5 text-yellow-500' />
+																		</div>
+																		<div>
+																			<p className='text-sm text-gray-400'>
+																				Overtime Reason
+																			</p>
+																			<p className='font-medium text-yellow-500'>
+																				{entry.overtimeReason}
+																			</p>
+																		</div>
+																	</div>
+
+																	{entry.overtimeReason === 'Company Request' &&
+																		entry.responsiblePerson && (
+																			<div className='flex items-center gap-3 pt-2 border-t border-yellow-500/10'>
+																				<div className='bg-blue-500/10 p-2.5 rounded-lg'>
+																					<User className='w-5 h-5 text-blue-500' />
+																				</div>
+																				<div>
+																					<p className='text-sm text-gray-400'>
+																						Responsible Person
+																					</p>
+																					<p className='font-medium text-blue-500'>
+																						{entry.responsiblePerson}
+																					</p>
+																				</div>
+																			</div>
+																		)}
+																</div>
+															)}
 														</div>
 													</div>
-													{entry.hours > 12 && entry.overtimeReason && (
-														<div className='mt-3 space-y-2'>
-															<p className='text-yellow-500 text-sm flex items-center gap-1'>
-																<AlertTriangle size={14} />
-																Overtime: {entry.overtimeReason}
-															</p>
-															{entry.overtimeReason === 'Company Request' &&
-																entry.responsiblePerson && (
-																	<p className='text-blue-400 text-sm flex items-center gap-1'>
-																		<User size={14} />
-																		Responsible: {entry.responsiblePerson}
-																	</p>
-																)}
-														</div>
-													)}
-												</div>
-											))}
+												)
+											})}
 									</div>
 								</div>
 							) : (
