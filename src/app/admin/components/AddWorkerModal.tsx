@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
 	Dialog,
 	DialogContent,
@@ -112,7 +111,7 @@ export default function AddWorkerModal({
 							</SelectContent>
 						</Select>
 					</div>
-					<div className='flex items-center space-x-2'>
+					{/* <div className='flex items-center space-x-2'>
 						<Checkbox
 							id='isAdmin'
 							checked={formData.isAdmin}
@@ -124,7 +123,7 @@ export default function AddWorkerModal({
 						<Label htmlFor='isAdmin' className='text-sm font-normal'>
 							Make admin
 						</Label>
-					</div>
+					</div> */}
 					{error && <p className='text-red-500 text-sm'>{error}</p>}
 					<div className='flex justify-end gap-3 pt-4'>
 						<Button

@@ -17,6 +17,7 @@ import {
 	ChevronRight,
 	Clock,
 	Download,
+	Loader2,
 	LogOut,
 	NotebookPen,
 	Search,
@@ -33,6 +34,7 @@ import AddWorkerModal from './components/AddWorkerModal'
 export default function AdminPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
 	const [loading, setLoading] = useState(true)
+	const [pdfLoading, setPdfLoading] = useState(false)
 	const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 	const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
@@ -163,9 +165,14 @@ export default function AdminPage() {
 
 	async function handleDownloadPDF(userId: string) {
 		try {
+			setPdfLoading(true)
 			await downloadWorkerPDF(userId, selectedMonth, selectedYear)
+			toast.success('PDF downloaded successfully')
 		} catch (error) {
 			console.error('Error downloading PDF:', error)
+			toast.error('Error downloading PDF')
+		} finally {
+			setPdfLoading(false)
 		}
 	}
 
@@ -214,7 +221,7 @@ export default function AdminPage() {
 						<div className='flex flex-col sm:flex-row lg:flex items-stretch sm:items-center gap-3 w-full sm:w-auto'>
 							<div className='flex xs:flex-row gap-3 w-full sm:w-auto'>
 								<select
-									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
 									value={selectedMonth}
 									onChange={e => setSelectedMonth(parseInt(e.target.value))}
 								>
@@ -225,7 +232,7 @@ export default function AdminPage() {
 									))}
 								</select>
 								<select
-									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
 									value={selectedYear}
 									onChange={e => setSelectedYear(parseInt(e.target.value))}
 								>
@@ -247,11 +254,11 @@ export default function AdminPage() {
 								</Button>
 								<Button
 									onClick={handleLogout}
-									className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none gap-2 h-10'
+									className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none gap-2 h-10 cursor-pointer'
 								>
 									<LogOut size={18} />
 									<span className='hidden sm:inline'>Logout</span>
-									<span className='sm:hidden'>Exit</span>
+									<span className='sm:hidden '>Exit</span>
 								</Button>
 							</div>
 						</div>
@@ -400,13 +407,18 @@ export default function AdminPage() {
 											{selectedWorkerData.username}
 										</h2>
 										<Button
-											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-4 sm:px-6 gap-2 h-9 sm:h-10'
+											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-4 sm:px-6 gap-2 h-9 sm:h-10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
 											onClick={() =>
 												selectedWorker && handleDownloadPDF(selectedWorker)
 											}
+											disabled={pdfLoading}
 										>
-											<Download size={16} />
-											<span className='hidden sm:inline'>Download PDF</span>
+											{pdfLoading ? (
+												<Loader2 className='w-4 h-4 animate-spin' />
+											) : (
+												<Download size={16} />
+											)}
+											<span className='hidden sm:inline '>Download PDF</span>
 											<span className='sm:hidden'>PDF</span>
 										</Button>
 									</div>
