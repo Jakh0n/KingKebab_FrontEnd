@@ -14,6 +14,7 @@ import {
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
 	AlertTriangle,
+	Bell,
 	Calendar,
 	CalendarDays,
 	CheckCircle2,
@@ -53,6 +54,9 @@ export default function DashboardPage() {
 	const router = useRouter()
 	const [isLoading, setIsLoading] = useState(false)
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+	const [expandedAnnouncements, setExpandedAnnouncements] = useState<{
+		[key: string]: boolean
+	}>({})
 
 	// Soatlarni hisoblash funksiyasi
 	const calculateHours = useCallback(
@@ -321,6 +325,13 @@ export default function DashboardPage() {
 		[]
 	)
 
+	const toggleAnnouncement = (id: string) => {
+		setExpandedAnnouncements(prev => ({
+			...prev,
+			[id]: !prev[id],
+		}))
+	}
+
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
 			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
@@ -351,6 +362,109 @@ export default function DashboardPage() {
 						)}
 					</Button>
 				</div>
+
+				{/* E'lonlar Banner */}
+				<Card className='bg-[#0E1422] border-none text-white overflow-hidden'>
+					<div className='relative bg-gradient-to-r from-[#4E7BEE]/20 to-[#4CC4C0]/20 p-4 sm:p-6'>
+						{/* Bezak elementlari */}
+						<div className='absolute top-0 right-0 w-32 h-32 bg-[#4E7BEE]/10 rounded-full -translate-y-1/2 translate-x-1/2'></div>
+						<div className='absolute bottom-0 left-0 w-24 h-24 bg-[#4CC4C0]/10 rounded-full translate-y-1/2 -translate-x-1/2'></div>
+
+						{/* Asosiy kontent */}
+						<div className='relative'>
+							<div className='flex items-center gap-2 mb-4'>
+								<div className='bg-[#4E7BEE] p-2 rounded-lg'>
+									<Bell className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
+								</div>
+								<h2 className='text-lg sm:text-2xl font-bold text-white'>
+									Important Announcements
+								</h2>
+							</div>
+
+							<div className='space-y-3'>
+								<div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4E7BEE]/20 hover:border-[#4E7BEE]/40 transition-all duration-300'>
+									<div className='flex items-center gap-2 mb-2'>
+										<div className='bg-[#4E7BEE]/10 p-1.5 rounded'>
+											<FileText className='w-4 h-4 text-[#4E7BEE]' />
+										</div>
+										<p className='text-sm sm:text-base font-medium text-[#4E7BEE]'>
+											New Work Time Tracking System
+										</p>
+									</div>
+									<div className='relative'>
+										<p
+											className={`text-xs sm:text-sm text-gray-400 mt-1 ${
+												!expandedAnnouncements['system'] ? 'line-clamp-3' : ''
+											}`}
+										>
+											Dear King Kebab Family, We are excited to announce the
+											launch of our new Work Time Tracking System, designed to
+											improve efficiency and accuracy in tracking working hours.
+											Starting from 15th June, all team members will begin using
+											the system, and we appreciate your cooperation in making
+											this transition smooth.
+										</p>
+										{!expandedAnnouncements['system'] && (
+											<button
+												onClick={() => toggleAnnouncement('system')}
+												className='text-[#4E7BEE] text-xs hover:underline mt-1'
+											>
+												Read More
+											</button>
+										)}
+										{expandedAnnouncements['system'] && (
+											<button
+												onClick={() => toggleAnnouncement('system')}
+												className='text-[#4E7BEE] text-xs hover:underline mt-1'
+											>
+												Show Less
+											</button>
+										)}
+									</div>
+								</div>
+
+								<div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4CC4C0]/20 hover:border-[#4CC4C0]/40 transition-all duration-300'>
+									<div className='flex items-center gap-2 mb-2'>
+										<div className='bg-[#4CC4C0]/10 p-1.5 rounded'>
+											<AlertTriangle className='w-4 h-4 text-[#4CC4C0]' />
+										</div>
+										<p className='text-sm sm:text-base font-medium text-[#4CC4C0]'>
+											Kitchen Rules
+										</p>
+									</div>
+									<div className='relative'>
+										<p
+											className={`text-xs sm:text-sm text-gray-400 mt-1 ${
+												!expandedAnnouncements['salary'] ? 'line-clamp-3' : ''
+											}`}
+										>
+											Hello King Kebab Family, please ensure we use fewer sauces
+											for the kebabs, pay close attention to kebab quality, and
+											maintain a clean kitchen at all times. Thank you for your
+											continued dedication !
+										</p>
+										{!expandedAnnouncements['salary'] && (
+											<button
+												onClick={() => toggleAnnouncement('salary')}
+												className='text-[#4CC4C0] text-xs hover:underline mt-1'
+											>
+												Read More
+											</button>
+										)}
+										{expandedAnnouncements['salary'] && (
+											<button
+												onClick={() => toggleAnnouncement('salary')}
+												className='text-[#4CC4C0] text-xs hover:underline mt-1'
+											>
+												Show Less
+											</button>
+										)}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</Card>
 
 				{/* Statistika */}
 				<div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
