@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import {
 	addTimeEntry,
 	deleteTimeEntry,
+	getMyProfile,
 	getMyTimeEntries,
 	logout,
 } from '@/lib/api'
@@ -116,21 +117,18 @@ export default function DashboardPage() {
 			return
 		}
 
-		try {
-			const payload = JSON.parse(atob(token.split('.')[1]))
-			setUserData({
-				id: payload.userId,
-				username: payload.username,
-				position: payload.position,
-				employeeId: payload.employeeId,
-			})
-			loadEntries()
-		} catch {
-			// Token buzilgan yoki muddati tugagan bo'lsa, logout qilamiz
-			localStorage.removeItem('token')
-			localStorage.removeItem('position')
-			router.push('/login')
+		async function fetchUser() {
+			try {
+				const user = await getMyProfile()
+				setUserData(user)
+				loadEntries()
+			} catch {
+				localStorage.removeItem('token')
+				localStorage.removeItem('position')
+				router.push('/login')
+			}
 		}
+		fetchUser()
 	}, [router, loadEntries])
 
 	// Oy o'zgarganda yangi ma'lumotlarni yuklash

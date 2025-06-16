@@ -375,3 +375,18 @@ export async function downloadAllWorkersExcel(month: number, year: number) {
 	window.URL.revokeObjectURL(url)
 	document.body.removeChild(a)
 }
+
+export async function getMyProfile() {
+	const token = getToken()
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/users/me`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	if (!response.ok) {
+		throw new Error('Foydalanuvchi maʼlumotlarini olishda xatolik')
+	}
+	return response.json()
+}
