@@ -15,13 +15,13 @@ export default function Home() {
 					>
 						<Link href='/login'>Login</Link>
 					</Button>
-					{/* <Button
+					<Button
 						asChild
 						variant='outline'
 						className='text-sm md:text-base w-full sm:w-auto px-8 py-6 sm:py-4 rounded-xl hover:scale-105 transition-transform border-2'
 					>
 						<Link href='/register'>Register</Link>
-					</Button> */}
+					</Button>
 				</div>
 			</div>
 		</main>

@@ -12,6 +12,7 @@ import { ChangeEvent, FormEvent, useState } from 'react'
 
 export default function RegisterPage() {
 	const [username, setUsername] = useState('')
+	const [employeeId, setEmployeeId] = useState('')
 	const [password, setPassword] = useState('')
 	const [position, setPosition] = useState<'worker' | 'rider'>('worker')
 	const [error, setError] = useState('')
@@ -22,7 +23,7 @@ export default function RegisterPage() {
 		e.preventDefault()
 		setIsLoading(true)
 		try {
-			const response = await register(username, password, position)
+			const response = await register(username, password, position, employeeId)
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
 			router.push('/dashboard')
@@ -49,6 +50,19 @@ export default function RegisterPage() {
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
+								}
+								required
+								disabled={isLoading}
+							/>
+						</div>
+						<div className='space-y-2'>
+							<Label htmlFor='employeeId'>Employee ID</Label>
+							<Input
+								id='employeeId'
+								placeholder='Enter your employee ID'
+								value={employeeId}
+								onChange={(e: ChangeEvent<HTMLInputElement>) =>
+									setEmployeeId(e.target.value)
 								}
 								required
 								disabled={isLoading}

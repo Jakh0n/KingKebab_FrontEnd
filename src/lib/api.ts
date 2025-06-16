@@ -1,4 +1,10 @@
-import { ApiError, AuthResponse, TimeEntry, TimeEntryFormData } from '@/types'
+import {
+	ApiError,
+	AuthResponse,
+	TimeEntry,
+	TimeEntryFormData,
+	User,
+} from '@/types'
 import Cookies from 'js-cookie'
 
 const API_URL =
@@ -38,14 +44,15 @@ export async function login(
 export async function register(
 	username: string,
 	password: string,
-	position: string
+	position: string,
+	employeeId: string
 ): Promise<AuthResponse> {
 	const response = await fetch(`${API_URL}/auth/register`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ username, password, position }),
+		body: JSON.stringify({ username, password, position, employeeId }),
 	})
 	const data = await handleResponse<AuthResponse>(response)
 
@@ -255,12 +262,13 @@ export async function registerWorker(data: {
 	password: string
 	position: string
 	isAdmin: boolean
+	employeeId: string
 }) {
 	try {
 		const token = localStorage.getItem('token')
 		if (!token) throw new Error('No token found')
 
-		const response = await fetch(`${API_URL}/auth/register`, {
+		const response = await fetch(`${API_URL}/users/register`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -280,4 +288,56 @@ export async function registerWorker(data: {
 		console.error('Registration error:', error)
 		throw error
 	}
+}
+
+export async function getAllWorkers() {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('No token found')
+
+	const response = await fetch(`${API_URL}/users/list`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<User[]>(response)
+}
+
+export async function downloadAllWorkersExcel(month: number, year: number) {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('No token found')
+
+	const response = await fetch(
+		`${API_URL}/time/all-workers-excel/${month}/${year}`,
+		{
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error('Failed to download Excel')
+	}
+
+	const blob = await response.blob()
+	const url = window.URL.createObjectURL(blob)
+	const a = document.createElement('a')
+	a.href = url
+
+	// Get filename from Content-Disposition header
+	const contentDisposition = response.headers.get('Content-Disposition')
+	let filename = `all-workers-report-${month}-${year}.xlsx`
+
+	if (contentDisposition) {
+		const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+		if (filenameMatch) {
+			filename = filenameMatch[1]
+		}
+	}
+
+	a.download = filename
+	document.body.appendChild(a)
+	a.click()
+	window.URL.revokeObjectURL(url)
+	document.body.removeChild(a)
 }
