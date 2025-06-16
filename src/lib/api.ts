@@ -20,6 +20,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
 	return data as T
 }
 
+function getToken() {
+	return localStorage.getItem('token') || Cookies.get('token') || ''
+}
+
 export async function login(
 	username: string,
 	password: string
@@ -67,7 +71,7 @@ export async function register(
 export async function addTimeEntry(
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('Not authenticated')
 
 	// Ma'lumotlarni tekshirish
@@ -111,7 +115,7 @@ export async function addTimeEntry(
 }
 
 export async function getMyTimeEntries(): Promise<TimeEntry[]> {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('Not authenticated')
 
 	try {
@@ -140,7 +144,7 @@ export async function getMyTimeEntries(): Promise<TimeEntry[]> {
 }
 
 export async function getAllTimeEntries(): Promise<TimeEntry[]> {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('Not authenticated')
 
 	const response = await fetch(`${API_URL}/time/all`, {
@@ -156,7 +160,7 @@ export async function downloadWorkerPDF(
 	month: number,
 	year: number
 ) {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(
@@ -196,7 +200,7 @@ export async function downloadWorkerPDF(
 }
 
 export async function downloadMyPDF(month: number, year: number) {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(`${API_URL}/time/my-pdf/${month}/${year}`, {
@@ -233,7 +237,7 @@ export async function downloadMyPDF(month: number, year: number) {
 }
 
 export async function deleteTimeEntry(entryId: string): Promise<void> {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(`${API_URL}/time/${entryId}`, {
@@ -252,7 +256,7 @@ export async function updateTimeEntry(
 	id: string,
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('Not authenticated')
 
 	// Ma'lumotlarni tekshirish
@@ -295,7 +299,7 @@ export async function registerWorker(data: {
 	employeeId: string
 }) {
 	try {
-		const token = localStorage.getItem('token')
+		const token = getToken()
 		if (!token) throw new Error('No token found')
 
 		const response = await fetch(`${API_URL}/users/register`, {
@@ -321,7 +325,7 @@ export async function registerWorker(data: {
 }
 
 export async function getAllWorkers() {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(`${API_URL}/users/list`, {
@@ -333,7 +337,7 @@ export async function getAllWorkers() {
 }
 
 export async function downloadAllWorkersExcel(month: number, year: number) {
-	const token = localStorage.getItem('token')
+	const token = getToken()
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(

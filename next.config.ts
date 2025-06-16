@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
 					key: 'X-XSS-Protection',
 					value: '1; mode=block',
 				},
+				{
+					key: 'Content-Security-Policy',
+					value:
+						"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://kingkebab-backend.onrender.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://kingkebab-backend.onrender.com; font-src 'self'; frame-ancestors 'none';",
+				},
 			],
 		},
 	],
