@@ -75,12 +75,25 @@ export async function addTimeEntry(
 		throw new Error("Barcha maydonlarni to'ldiring")
 	}
 
-	// Vaqtlarni to'g'ri formatga o'tkazish
+	// Validate dates
+	const startDate = new Date(data.startTime)
+	const endDate = new Date(data.endTime)
+	const entryDate = new Date(data.date)
+
+	if (
+		isNaN(startDate.getTime()) ||
+		isNaN(endDate.getTime()) ||
+		isNaN(entryDate.getTime())
+	) {
+		throw new Error('Invalid date format')
+	}
+
+	// Format dates in ISO string
 	const formattedData = {
 		...data,
-		startTime: data.startTime,
-		endTime: data.endTime,
-		date: data.date,
+		startTime: startDate.toISOString(),
+		endTime: endDate.toISOString(),
+		date: entryDate.toISOString(),
 	}
 
 	console.log('Sending data:', formattedData)
@@ -101,12 +114,29 @@ export async function getMyTimeEntries(): Promise<TimeEntry[]> {
 	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
-	const response = await fetch(`${API_URL}/time/my-entries`, {
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
-	})
-	return handleResponse<TimeEntry[]>(response)
+	try {
+		const response = await fetch(`${API_URL}/time/my-entries`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		})
+
+		if (!response.ok) {
+			const error = await response.json()
+			throw new Error(error.message || 'Failed to fetch time entries')
+		}
+
+		const data = await response.json()
+		return data.map((entry: TimeEntry) => ({
+			...entry,
+			startTime: new Date(entry.startTime).toISOString(),
+			endTime: new Date(entry.endTime).toISOString(),
+			date: new Date(entry.date).toISOString(),
+		}))
+	} catch (error) {
+		console.error('Error fetching time entries:', error)
+		throw error
+	}
 }
 
 export async function getAllTimeEntries(): Promise<TimeEntry[]> {

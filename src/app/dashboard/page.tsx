@@ -11,6 +11,7 @@ import {
 	getMyTimeEntries,
 	logout,
 } from '@/lib/api'
+import { sendTelegramMessage } from '@/lib/utils'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
 	AlertTriangle,
@@ -233,6 +234,23 @@ export default function DashboardPage() {
 				const newEntry = await addTimeEntry(data)
 				setEntries([...entries, newEntry])
 
+				// Telegramga xabar yuborish
+				const message =
+					`\n🆕 <b>Yangi vaqt qo'shildi</b>\n\n👤 Foydalanuvchi: ${
+						userData?.username || ''
+					}\n📅 Sana: ${data.date}\n⏰ Vaqt: ${formData.startTime} - ${
+						formData.endTime
+					}\n${
+						overtimeReason ? `⚠️ Qo'shimcha ish sababi: ${overtimeReason}` : ''
+					}\n${
+						responsiblePerson ? `👥 Mas'ul shaxs: ${responsiblePerson}` : ''
+					}`.trim()
+				try {
+					await sendTelegramMessage(message)
+				} catch (err) {
+					console.error('Telegramga yuborishda xatolik:', err)
+				}
+
 				// Formani tozalash
 				setFormData({
 					startTime: '',
@@ -257,7 +275,7 @@ export default function DashboardPage() {
 				setLoading(false)
 			}
 		},
-		[selectedDate, formData, isOvertime, entries]
+		[selectedDate, formData, isOvertime, entries, userData]
 	)
 
 	// Vaqtlarni formatlash
