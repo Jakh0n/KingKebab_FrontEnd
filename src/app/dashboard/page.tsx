@@ -116,15 +116,21 @@ export default function DashboardPage() {
 			return
 		}
 
-		const payload = JSON.parse(atob(token.split('.')[1]))
-		setUserData({
-			id: payload.userId,
-			username: payload.username,
-			position: payload.position,
-			employeeId: payload.employeeId,
-		})
-
-		loadEntries()
+		try {
+			const payload = JSON.parse(atob(token.split('.')[1]))
+			setUserData({
+				id: payload.userId,
+				username: payload.username,
+				position: payload.position,
+				employeeId: payload.employeeId,
+			})
+			loadEntries()
+		} catch {
+			// Token buzilgan yoki muddati tugagan bo'lsa, logout qilamiz
+			localStorage.removeItem('token')
+			localStorage.removeItem('position')
+			router.push('/login')
+		}
 	}, [router, loadEntries])
 
 	// Oy o'zgarganda yangi ma'lumotlarni yuklash
