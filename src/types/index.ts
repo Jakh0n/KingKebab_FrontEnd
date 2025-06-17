@@ -30,6 +30,7 @@ export interface AuthResponse {
 	position: string
 	isAdmin: boolean
 	username: string
+	employeeId: string
 }
 
 export interface ApiError {

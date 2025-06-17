@@ -38,20 +38,22 @@ export async function login(
 export async function register(
 	username: string,
 	password: string,
-	position: string
+	position: string,
+	employeeId: string
 ): Promise<AuthResponse> {
 	const response = await fetch(`${API_URL}/auth/register`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ username, password, position }),
+		body: JSON.stringify({ username, password, position, employeeId }),
 	})
 	const data = await handleResponse<AuthResponse>(response)
 
 	// Token va position ni localStorage va cookie ga saqlash
 	localStorage.setItem('token', data.token)
 	localStorage.setItem('position', data.position)
+	localStorage.setItem('employeeId', data.employeeId)
 	Cookies.set('token', data.token, { expires: 1 }) // 1 kunlik cookie
 
 	return data
