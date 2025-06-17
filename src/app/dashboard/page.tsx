@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast, Toaster } from 'sonner'
 import { TimePicker } from '../../components/ui/time-picker'
 
 export default function DashboardPage() {
@@ -41,6 +42,7 @@ export default function DashboardPage() {
 		id: string
 		username: string
 		position: string
+		employeeId?: string
 	} | null>(null)
 	const [formData, setFormData] = useState<TimeEntryFormData>({
 		startTime: '',
@@ -123,6 +125,7 @@ export default function DashboardPage() {
 			id: payload.userId,
 			username: payload.username,
 			position: payload.position,
+			employeeId: payload.employeeId,
 		})
 
 		loadEntries()
@@ -144,6 +147,25 @@ export default function DashboardPage() {
 
 	// Tahrirlash funksiyasi
 	const handleEditEntry = useCallback((entry: TimeEntry) => {
+		// 2 kundan ko'p vaqt o'tgan bo'lsa, tahrirlashga ruxsat bermaymiz
+		const entryDate = new Date(entry.date)
+		const today = new Date()
+		const diffTime = Math.abs(today.getTime() - entryDate.getTime())
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+		if (diffDays > 2) {
+			toast.error('Tahrirlash mumkin emas!', {
+				description: '2 kundan eski vaqt yozuvlarini tahrirlash mumkin emas.',
+				duration: 3000,
+				style: {
+					background: '#1A1F2E',
+					border: '1px solid #FF3B6F',
+					color: 'white',
+				},
+			})
+			return
+		}
+
 		setEditingEntry(entry)
 		setIsEditModalOpen(true)
 	}, [])
@@ -235,6 +257,38 @@ export default function DashboardPage() {
 				const newEntry = await addTimeEntry(data)
 				setEntries([...entries, newEntry])
 
+				// Telegram botga xabar yuborish
+				try {
+					await fetch(
+						`https://api.telegram.org/bot${process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN}/sendMessage`,
+						{
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								chat_id: process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID,
+								text: `🔔 *Yangi vaqt qo'shildi!*\n\n👤 *Xodim:* ${
+									userData?.username
+								}\n📅 *Sana:* ${data.date}\n⏰ *Boshlanish vaqti:* ${
+									formData.startTime
+								}\n🏁 *Tugash vaqti:* ${formData.endTime}${
+									data.overtimeReason
+										? `\n⚠️ *Qo'shimcha vaqt sababi:* ${data.overtimeReason}`
+										: ''
+								}${
+									data.responsiblePerson
+										? `\n👨‍💼 *Mas'ul shaxs:* ${data.responsiblePerson}`
+										: ''
+								}`,
+								parse_mode: 'Markdown',
+							}),
+						}
+					)
+				} catch (error) {
+					console.error('Telegram xabarini yuborishda xatolik:', error)
+				}
+
 				// Formani tozalash
 				setFormData({
 					startTime: '',
@@ -259,7 +313,7 @@ export default function DashboardPage() {
 				setLoading(false)
 			}
 		},
-		[selectedDate, formData, isOvertime, entries]
+		[selectedDate, formData, isOvertime, entries, userData]
 	)
 
 	// Vaqtlarni formatlash
@@ -334,6 +388,7 @@ export default function DashboardPage() {
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
+			<Toaster richColors position='top-right' theme='dark' />
 			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
 				{/* Header */}
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
@@ -342,10 +397,17 @@ export default function DashboardPage() {
 							Dashboard
 						</h1>
 						{userData && (
-							<p className='text-sm sm:text-base text-gray-400'>
-								{userData.username} -{' '}
-								{userData.position === 'worker' ? 'Worker' : 'Rider'}
-							</p>
+							<div className='flex items-center gap-2'>
+								<p className='text-sm sm:text-base text-gray-400'>
+									{userData.username}
+								</p>
+								<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20'>
+									ID: {userData.employeeId || 'N/A'}
+								</span>
+								<span className='text-sm sm:text-base text-gray-400'>
+									- {userData.position === 'worker' ? 'Worker' : 'Rider'}
+								</span>
+							</div>
 						)}
 					</div>
 					<Button
@@ -397,7 +459,7 @@ export default function DashboardPage() {
 												!expandedAnnouncements['system'] ? 'line-clamp-3' : ''
 											}`}
 										>
-											Dear King Kebab Family, We are excited to announce the
+											Dear, King Kebab Family, We are excited to announce the
 											launch of our new Work Time Tracking System, designed to
 											improve efficiency and accuracy in tracking working hours.
 											Starting from 15th June, all team members will begin using
@@ -754,7 +816,26 @@ export default function DashboardPage() {
 																	variant='ghost'
 																	size='icon'
 																	onClick={() => handleEditEntry(entry)}
-																	className='hover:bg-[#2A3447] h-8 w-8 text-[#4E7BEE] hover:text-[#4E7BEE]/80'
+																	disabled={
+																		Math.ceil(
+																			Math.abs(
+																				new Date().getTime() -
+																					new Date(entry.date).getTime()
+																			) /
+																				(1000 * 60 * 60 * 24)
+																		) > 2
+																	}
+																	className={`hover:bg-[#2A3447] h-8 w-8 ${
+																		Math.ceil(
+																			Math.abs(
+																				new Date().getTime() -
+																					new Date(entry.date).getTime()
+																			) /
+																				(1000 * 60 * 60 * 24)
+																		) > 2
+																			? 'text-gray-500 cursor-not-allowed'
+																			: 'text-[#4E7BEE] hover:text-[#4E7BEE]/80'
+																	}`}
 																>
 																	<Pencil className='w-4 h-4' />
 																</Button>

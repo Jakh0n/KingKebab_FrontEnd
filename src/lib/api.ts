@@ -76,6 +76,7 @@ export async function addTimeEntry(
 		startTime: data.startTime,
 		endTime: data.endTime,
 		date: data.date,
+		...(data.employeeId ? { employeeId: data.employeeId } : {}),
 	}
 
 	console.log('Sending data:', formattedData)
@@ -257,29 +258,19 @@ export async function registerWorker(data: {
 	password: string
 	position: string
 	isAdmin: boolean
+	employeeId: string
 }) {
-	try {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('No token found')
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
 
-		const response = await fetch(`${API_URL}/auth/register`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify(data),
-		})
+	const response = await fetch(`${API_URL}/auth/register`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
 
-		const responseData = await response.json()
-
-		if (!response.ok) {
-			throw new Error(responseData.message || 'Failed to register worker')
-		}
-
-		return responseData
-	} catch (error) {
-		console.error('Registration error:', error)
-		throw error
-	}
+	return handleResponse(response)
 }

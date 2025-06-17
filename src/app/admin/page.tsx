@@ -3,11 +3,13 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
-	downloadWorkerPDF,
-	getAllTimeEntries,
-	logout,
-	registerWorker,
-} from '@/lib/api'
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { getAllTimeEntries, logout, registerWorker } from '@/lib/api'
 import { TimeEntry } from '@/types'
 import {
 	AlertTriangle,
@@ -17,10 +19,11 @@ import {
 	ChevronRight,
 	Clock,
 	Download,
-	Loader2,
 	LogOut,
+	Menu,
 	NotebookPen,
 	Search,
+	Settings,
 	Timer,
 	User,
 	UserPlus,
@@ -29,12 +32,12 @@ import {
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import * as XLSX from 'xlsx'
 import AddWorkerModal from './components/AddWorkerModal'
 
 export default function AdminPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
 	const [loading, setLoading] = useState(true)
-	const [pdfLoading, setPdfLoading] = useState(false)
 	const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 	const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
@@ -118,6 +121,7 @@ export default function AdminPage() {
 				if (!acc[userId]) {
 					acc[userId] = {
 						id: userId,
+						employeeId: entry.user.employeeId || entry.employeeId || 'N/A',
 						username: entry.user.username || '',
 						position: entry.user.position || 'worker',
 						totalHours: 0,
@@ -137,6 +141,7 @@ export default function AdminPage() {
 				string,
 				{
 					id: string
+					employeeId: string
 					username: string
 					position: string
 					totalHours: number
@@ -163,24 +168,25 @@ export default function AdminPage() {
 		)
 	}, [workerStats, searchQuery])
 
-	async function handleDownloadPDF(userId: string) {
-		try {
-			setPdfLoading(true)
-			await downloadWorkerPDF(userId, selectedMonth, selectedYear)
-			toast.success('PDF downloaded successfully')
-		} catch (error) {
-			console.error('Error downloading PDF:', error)
-			toast.error('Error downloading PDF')
-		} finally {
-			setPdfLoading(false)
-		}
-	}
+	// async function handleDownloadPDF(userId: string) {
+	// 	try {
+	// 		setPdfLoading(true)
+	// 		await downloadWorkerPDF(userId, selectedMonth, selectedYear)
+	// 		toast.success('PDF downloaded successfully')
+	// 	} catch (error) {
+	// 		console.error('Error downloading PDF:', error)
+	// 		toast.error('Error downloading PDF')
+	// 	} finally {
+	// 		setPdfLoading(false)
+	// 	}
+	// }
 
 	const handleAddWorker = async (workerData: {
 		username: string
 		password: string
 		position: string
 		isAdmin: boolean
+		employeeId: string
 	}) => {
 		try {
 			await registerWorker(workerData)
@@ -192,6 +198,30 @@ export default function AdminPage() {
 				error instanceof Error ? error.message : 'Failed to add worker'
 			)
 		}
+	}
+
+	const handleDownloadExcel = () => {
+		console.log('Worker Stats before Excel:', Object.values(workerStats))
+
+		// Hamma ishchilar statistikasi
+		const excelData = Object.values(workerStats).map(worker => {
+			console.log('Processing worker:', worker)
+			return {
+				'Xodim ID': worker.employeeId || 'N/A',
+				Username: worker.username,
+				'Jami soatlar': worker.totalHours,
+				'Jami kunlar': worker.regularDays + worker.overtimeDays,
+				'Regular kunlar': worker.regularDays,
+				"Qo'shimcha kunlar": worker.overtimeDays,
+			}
+		})
+
+		console.log('Excel Data:', excelData)
+
+		const ws = XLSX.utils.json_to_sheet(excelData)
+		const wb = XLSX.utils.book_new()
+		XLSX.utils.book_append_sheet(wb, ws, 'Xodimlar')
+		XLSX.writeFile(wb, 'xodimlar_statistikasi.xlsx')
 	}
 
 	if (loading) {
@@ -213,10 +243,56 @@ export default function AdminPage() {
 				{/* Header */}
 				<div className='bg-[#0E1422] p-3 sm:p-4 lg:p-6 rounded-lg shadow-lg'>
 					<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
-						<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE] flex items-center gap-2 min-w-max'>
-							<NotebookPen size={28} className='text-[#4E7BEE]' />
-							<span className='text-white'>Admin</span> Panel
-						</h1>
+						<div className='flex items-center gap-4 w-full justify-between'>
+							<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE] flex items-center gap-2 min-w-max'>
+								<NotebookPen size={28} className='text-[#4E7BEE]' />
+								<span className='text-white'>Admin</span> Panel
+							</h1>
+
+							{/* Admin Actions Dropdown */}
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-10 w-10 bg-[#1A1F2E] hover:bg-[#2A3447]'
+									>
+										<Menu className='h-5 w-5 text-[#4E7BEE]' />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									align='end'
+									className='w-56 bg-[#1A1F2E] border-[#2A3447] text-white'
+								>
+									<DropdownMenuItem
+										className='hover:bg-[#2A3447] cursor-pointer group'
+										onClick={() => setIsAddModalOpen(true)}
+									>
+										<UserPlus className='mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80' />
+										<span>Add Worker</span>
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										className='hover:bg-[#2A3447] cursor-pointer group'
+										onClick={handleDownloadExcel}
+									>
+										<Download className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
+										<span>Download Excel</span>
+									</DropdownMenuItem>
+									<DropdownMenuItem className='hover:bg-[#2A3447] cursor-pointer group'>
+										<Settings className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
+										<span>Settings</span>
+									</DropdownMenuItem>
+									<DropdownMenuSeparator className='bg-[#2A3447]' />
+									<DropdownMenuItem
+										className='hover:bg-[#2A3447] cursor-pointer group text-[#FF3B6F] focus:text-[#FF3B6F]'
+										onClick={handleLogout}
+									>
+										<LogOut className='mr-2 h-4 w-4 group-hover:text-[#FF3B6F]/80' />
+										<span>Logout</span>
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
 
 						<div className='flex flex-col sm:flex-row lg:flex items-stretch sm:items-center gap-3 w-full sm:w-auto'>
 							<div className='flex xs:flex-row gap-3 w-full sm:w-auto'>
@@ -231,35 +307,21 @@ export default function AdminPage() {
 										</option>
 									))}
 								</select>
+
 								<select
 									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
 									value={selectedYear}
 									onChange={e => setSelectedYear(parseInt(e.target.value))}
 								>
-									{[2023, 2024, 2025, 2026].map(year => (
+									{Array.from(
+										{ length: 5 },
+										(_, i) => new Date().getFullYear() - 2 + i
+									).map(year => (
 										<option key={year} value={year}>
 											{year}
 										</option>
 									))}
 								</select>
-							</div>
-							<div className='flex gap-2 w-full sm:w-auto'>
-								<Button
-									onClick={() => setIsAddModalOpen(true)}
-									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 flex-1 sm:flex-none gap-2 h-10'
-								>
-									<UserPlus size={18} />
-									<span className='hidden sm:inline'>Add Worker</span>
-									<span className='sm:hidden'>Add</span>
-								</Button>
-								<Button
-									onClick={handleLogout}
-									className='bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 flex-1 sm:flex-none gap-2 h-10 cursor-pointer'
-								>
-									<LogOut size={18} />
-									<span className='hidden sm:inline'>Logout</span>
-									<span className='sm:hidden '>Exit</span>
-								</Button>
 							</div>
 						</div>
 					</div>
@@ -320,19 +382,21 @@ export default function AdminPage() {
 				<div className='flex flex-col lg:flex-row gap-4'>
 					{/* Workers List */}
 					<div className='w-full lg:w-1/3 bg-[#0E1422] rounded-lg p-3 sm:p-4'>
-						<div className='mb-4 sm:mb-6 relative'>
-							<Search
-								className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400'
-								size={18}
-							/>
+						{/* Search Input */}
+						<div className='relative mb-4'>
 							<input
 								type='text'
 								placeholder='Search workers...'
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
-								className='w-full bg-[#1A1F2E] text-white pl-10 pr-4 py-2.5 rounded-lg text-sm border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+								className='w-full bg-[#1A1F2E] text-white pl-9 pr-4 py-2.5 rounded-lg text-sm border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all'
+							/>
+							<Search
+								size={16}
+								className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
 							/>
 						</div>
+
 						<div className='h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)] overflow-y-auto custom-scrollbar pr-2 space-y-3'>
 							{filteredWorkers.map(worker => (
 								<Card
@@ -406,7 +470,7 @@ export default function AdminPage() {
 											)}
 											{selectedWorkerData.username}
 										</h2>
-										<Button
+										{/* <Button
 											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-4 sm:px-6 gap-2 h-9 sm:h-10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
 											onClick={() =>
 												selectedWorker && handleDownloadPDF(selectedWorker)
@@ -420,7 +484,7 @@ export default function AdminPage() {
 											)}
 											<span className='hidden sm:inline '>Download PDF</span>
 											<span className='sm:hidden'>PDF</span>
-										</Button>
+										</Button> */}
 									</div>
 									<div className='space-y-2 sm:space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1'>
 										{filteredEntries

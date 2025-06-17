@@ -2,6 +2,7 @@ export interface User {
 	_id: string
 	username: string
 	position: string
+	employeeId: string
 }
 
 export interface TimeEntry {
@@ -15,6 +16,7 @@ export interface TimeEntry {
 	breakMinutes?: number
 	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
 	responsiblePerson?: 'Adilcan' | 'Boss' | ''
+	employeeId?: string
 }
 
 export interface TimeEntryFormData {
@@ -23,6 +25,7 @@ export interface TimeEntryFormData {
 	date: string
 	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
 	responsiblePerson?: 'Adilcan' | 'Boss' | ''
+	employeeId?: string
 }
 
 export interface AuthResponse {
