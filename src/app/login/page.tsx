@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login } from '@/lib/api'
-import Cookies from 'js-cookie'
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
@@ -24,29 +23,15 @@ export default function LoginPage() {
 			const response = await login(username, password)
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
-			Cookies.set('token', response.token, { expires: 1 })
 
-			try {
-				const token = response.token
-				const payload = JSON.parse(atob(token.split('.')[1]))
-				if (!payload || !payload.userId) {
-					localStorage.removeItem('token')
-					localStorage.removeItem('position')
-					Cookies.remove('token')
-					setError("Token noto'g'ri yoki buzilgan. Qayta login qiling.")
-					return
-				}
-				if (payload.isAdmin) {
-					router.push('/admin')
-				} else {
-					router.push('/dashboard')
-				}
-			} catch {
-				localStorage.removeItem('token')
-				localStorage.removeItem('position')
-				Cookies.remove('token')
-				setError("Token noto'g'ri yoki buzilgan. Qayta login qiling.")
-				return
+			// Decode JWT token and check isAdmin
+			const token = response.token
+			const payload = JSON.parse(atob(token.split('.')[1]))
+
+			if (payload.isAdmin) {
+				router.push('/admin')
+			} else {
+				router.push('/dashboard')
 			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Login failed')

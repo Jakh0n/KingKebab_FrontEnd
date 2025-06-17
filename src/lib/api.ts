@@ -1,10 +1,4 @@
-import {
-	ApiError,
-	AuthResponse,
-	TimeEntry,
-	TimeEntryFormData,
-	User,
-} from '@/types'
+import { ApiError, AuthResponse, TimeEntry, TimeEntryFormData } from '@/types'
 import Cookies from 'js-cookie'
 
 const API_URL =
@@ -18,10 +12,6 @@ async function handleResponse<T>(response: Response): Promise<T> {
 		throw new Error(errorMessage)
 	}
 	return data as T
-}
-
-function getToken() {
-	return localStorage.getItem('token') || Cookies.get('token') || ''
 }
 
 export async function login(
@@ -48,15 +38,14 @@ export async function login(
 export async function register(
 	username: string,
 	password: string,
-	position: string,
-	employeeId: string
+	position: string
 ): Promise<AuthResponse> {
 	const response = await fetch(`${API_URL}/auth/register`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({ username, password, position, employeeId }),
+		body: JSON.stringify({ username, password, position }),
 	})
 	const data = await handleResponse<AuthResponse>(response)
 
@@ -71,7 +60,7 @@ export async function register(
 export async function addTimeEntry(
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
 	// Ma'lumotlarni tekshirish
@@ -79,25 +68,12 @@ export async function addTimeEntry(
 		throw new Error("Barcha maydonlarni to'ldiring")
 	}
 
-	// Validate dates
-	const startDate = new Date(data.startTime)
-	const endDate = new Date(data.endTime)
-	const entryDate = new Date(data.date)
-
-	if (
-		isNaN(startDate.getTime()) ||
-		isNaN(endDate.getTime()) ||
-		isNaN(entryDate.getTime())
-	) {
-		throw new Error('Invalid date format')
-	}
-
-	// Format dates in ISO string
+	// Vaqtlarni to'g'ri formatga o'tkazish
 	const formattedData = {
 		...data,
-		startTime: startDate.toISOString(),
-		endTime: endDate.toISOString(),
-		date: entryDate.toISOString(),
+		startTime: data.startTime,
+		endTime: data.endTime,
+		date: data.date,
 	}
 
 	console.log('Sending data:', formattedData)
@@ -115,36 +91,19 @@ export async function addTimeEntry(
 }
 
 export async function getMyTimeEntries(): Promise<TimeEntry[]> {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
-	try {
-		const response = await fetch(`${API_URL}/time/my-entries`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
-		})
-
-		if (!response.ok) {
-			const error = await response.json()
-			throw new Error(error.message || 'Failed to fetch time entries')
-		}
-
-		const data = await response.json()
-		return data.map((entry: TimeEntry) => ({
-			...entry,
-			startTime: new Date(entry.startTime).toISOString(),
-			endTime: new Date(entry.endTime).toISOString(),
-			date: new Date(entry.date).toISOString(),
-		}))
-	} catch (error) {
-		console.error('Error fetching time entries:', error)
-		throw error
-	}
+	const response = await fetch(`${API_URL}/time/my-entries`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<TimeEntry[]>(response)
 }
 
 export async function getAllTimeEntries(): Promise<TimeEntry[]> {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
 	const response = await fetch(`${API_URL}/time/all`, {
@@ -160,7 +119,7 @@ export async function downloadWorkerPDF(
 	month: number,
 	year: number
 ) {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(
@@ -200,7 +159,7 @@ export async function downloadWorkerPDF(
 }
 
 export async function downloadMyPDF(month: number, year: number) {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(`${API_URL}/time/my-pdf/${month}/${year}`, {
@@ -237,7 +196,7 @@ export async function downloadMyPDF(month: number, year: number) {
 }
 
 export async function deleteTimeEntry(entryId: string): Promise<void> {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('No token found')
 
 	const response = await fetch(`${API_URL}/time/${entryId}`, {
@@ -256,7 +215,7 @@ export async function updateTimeEntry(
 	id: string,
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
-	const token = getToken()
+	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
 	// Ma'lumotlarni tekshirish
@@ -296,13 +255,12 @@ export async function registerWorker(data: {
 	password: string
 	position: string
 	isAdmin: boolean
-	employeeId: string
 }) {
 	try {
-		const token = getToken()
+		const token = localStorage.getItem('token')
 		if (!token) throw new Error('No token found')
 
-		const response = await fetch(`${API_URL}/users/register`, {
+		const response = await fetch(`${API_URL}/auth/register`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -322,71 +280,4 @@ export async function registerWorker(data: {
 		console.error('Registration error:', error)
 		throw error
 	}
-}
-
-export async function getAllWorkers() {
-	const token = getToken()
-	if (!token) throw new Error('No token found')
-
-	const response = await fetch(`${API_URL}/users/list`, {
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
-	})
-	return handleResponse<User[]>(response)
-}
-
-export async function downloadAllWorkersExcel(month: number, year: number) {
-	const token = getToken()
-	if (!token) throw new Error('No token found')
-
-	const response = await fetch(
-		`${API_URL}/time/all-workers-excel/${month}/${year}`,
-		{
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
-		}
-	)
-
-	if (!response.ok) {
-		throw new Error('Failed to download Excel')
-	}
-
-	const blob = await response.blob()
-	const url = window.URL.createObjectURL(blob)
-	const a = document.createElement('a')
-	a.href = url
-
-	// Get filename from Content-Disposition header
-	const contentDisposition = response.headers.get('Content-Disposition')
-	let filename = `all-workers-report-${month}-${year}.xlsx`
-
-	if (contentDisposition) {
-		const filenameMatch = contentDisposition.match(/filename="(.+)"/)
-		if (filenameMatch) {
-			filename = filenameMatch[1]
-		}
-	}
-
-	a.download = filename
-	document.body.appendChild(a)
-	a.click()
-	window.URL.revokeObjectURL(url)
-	document.body.removeChild(a)
-}
-
-export async function getMyProfile() {
-	const token = getToken()
-	if (!token) throw new Error('Not authenticated')
-
-	const response = await fetch(`${API_URL}/users/me`, {
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
-	})
-	if (!response.ok) {
-		throw new Error('Foydalanuvchi maʼlumotlarini olishda xatolik')
-	}
-	return response.json()
 }

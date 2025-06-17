@@ -26,7 +26,6 @@ interface AddWorkerModalProps {
 		password: string
 		position: string
 		isAdmin: boolean
-		employeeId: string
 	}) => void
 }
 
@@ -40,7 +39,6 @@ export default function AddWorkerModal({
 		password: '',
 		position: 'worker',
 		isAdmin: false,
-		employeeId: '',
 	})
 	const [error, setError] = useState('')
 
@@ -48,7 +46,7 @@ export default function AddWorkerModal({
 		e.preventDefault()
 		setError('')
 
-		if (!formData.username || !formData.password || !formData.employeeId) {
+		if (!formData.username || !formData.password) {
 			setError('Please fill in all fields')
 			return
 		}
@@ -59,7 +57,6 @@ export default function AddWorkerModal({
 			password: '',
 			position: 'worker',
 			isAdmin: false,
-			employeeId: '',
 		})
 	}
 
@@ -82,18 +79,6 @@ export default function AddWorkerModal({
 							}
 							className='bg-[#1A1F2E] border-none text-white'
 							placeholder='Enter username'
-						/>
-					</div>
-					<div className='space-y-2'>
-						<Label htmlFor='employeeId'>Employee ID</Label>
-						<Input
-							id='employeeId'
-							value={formData.employeeId}
-							onChange={e =>
-								setFormData({ ...formData, employeeId: e.target.value })
-							}
-							className='bg-[#1A1F2E] border-none text-white'
-							placeholder='Enter employee ID'
 						/>
 					</div>
 					<div className='space-y-2'>

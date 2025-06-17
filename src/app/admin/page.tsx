@@ -3,13 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
-	downloadAllWorkersExcel,
+	downloadWorkerPDF,
 	getAllTimeEntries,
-	getAllWorkers,
 	logout,
 	registerWorker,
 } from '@/lib/api'
-import { TimeEntry, User as UserType } from '@/types'
+import { TimeEntry } from '@/types'
 import {
 	AlertTriangle,
 	Bike,
@@ -33,10 +32,9 @@ import { toast } from 'sonner'
 import AddWorkerModal from './components/AddWorkerModal'
 
 export default function AdminPage() {
-	const [workers, setWorkers] = useState<UserType[]>([])
 	const [entries, setEntries] = useState<TimeEntry[]>([])
 	const [loading, setLoading] = useState(true)
-	const [allExcelLoading, setAllExcelLoading] = useState(false)
+	const [pdfLoading, setPdfLoading] = useState(false)
 	const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 	const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
@@ -71,19 +69,6 @@ export default function AdminPage() {
 
 		loadEntries()
 	}, [router, loadEntries])
-
-	useEffect(() => {
-		async function fetchWorkers() {
-			try {
-				const data = await getAllWorkers()
-				setWorkers(data)
-				console.log('Admin panel workers:', data)
-			} catch {
-				// error handling
-			}
-		}
-		fetchWorkers()
-	}, [])
 
 	function handleLogout() {
 		logout()
@@ -135,7 +120,6 @@ export default function AdminPage() {
 						id: userId,
 						username: entry.user.username || '',
 						position: entry.user.position || 'worker',
-						employeeId: entry.user.employeeId || '',
 						totalHours: 0,
 						regularDays: 0,
 						overtimeDays: 0,
@@ -155,7 +139,6 @@ export default function AdminPage() {
 					id: string
 					username: string
 					position: string
-					employeeId: string
 					totalHours: number
 					regularDays: number
 					overtimeDays: number
@@ -180,16 +163,16 @@ export default function AdminPage() {
 		)
 	}, [workerStats, searchQuery])
 
-	async function handleDownloadAllExcel() {
+	async function handleDownloadPDF(userId: string) {
 		try {
-			setAllExcelLoading(true)
-			await downloadAllWorkersExcel(selectedMonth, selectedYear)
-			toast.success('All workers Excel downloaded successfully')
+			setPdfLoading(true)
+			await downloadWorkerPDF(userId, selectedMonth, selectedYear)
+			toast.success('PDF downloaded successfully')
 		} catch (error) {
-			console.error('Error downloading Excel:', error)
-			toast.error('Error downloading Excel')
+			console.error('Error downloading PDF:', error)
+			toast.error('Error downloading PDF')
 		} finally {
-			setAllExcelLoading(false)
+			setPdfLoading(false)
 		}
 	}
 
@@ -198,7 +181,6 @@ export default function AdminPage() {
 		password: string
 		position: string
 		isAdmin: boolean
-		employeeId: string
 	}) => {
 		try {
 			await registerWorker(workerData)
@@ -262,19 +244,6 @@ export default function AdminPage() {
 								</select>
 							</div>
 							<div className='flex gap-2 w-full sm:w-auto'>
-								<Button
-									onClick={handleDownloadAllExcel}
-									className='bg-[#00875A] hover:bg-[#00875A]/90 flex-1 sm:flex-none gap-2 h-10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
-									disabled={allExcelLoading}
-								>
-									{allExcelLoading ? (
-										<Loader2 className='w-4 h-4 animate-spin' />
-									) : (
-										<Download size={18} />
-									)}
-									<span className='hidden sm:inline'>Download All</span>
-									<span className='sm:hidden'>All</span>
-								</Button>
 								<Button
 									onClick={() => setIsAddModalOpen(true)}
 									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 flex-1 sm:flex-none gap-2 h-10'
@@ -384,10 +353,7 @@ export default function AdminPage() {
 													) : (
 														<Bike size={16} className='text-[#9B5DE5]' />
 													)}
-													{worker.username}{' '}
-													{/* <span className='text-gray-400 text-sm'>
-														(ID: {worker.employeeId})
-													</span> */}
+													{worker.username}
 												</h2>
 												<p className='text-gray-400 text-xs sm:text-sm'>
 													{worker.position === 'worker' ? 'Worker' : 'Rider'}
@@ -438,11 +404,23 @@ export default function AdminPage() {
 											) : (
 												<Bike size={20} className='text-[#9B5DE5]' />
 											)}
-											{selectedWorkerData.username}{' '}
-											{/* <span className='text-gray-400 text-sm'>
-												(ID: {selectedWorkerData.employeeId})
-											</span> */}
+											{selectedWorkerData.username}
 										</h2>
+										<Button
+											className='bg-[#00875A] hover:bg-[#00875A]/90 w-full sm:w-auto px-4 sm:px-6 gap-2 h-9 sm:h-10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+											onClick={() =>
+												selectedWorker && handleDownloadPDF(selectedWorker)
+											}
+											disabled={pdfLoading}
+										>
+											{pdfLoading ? (
+												<Loader2 className='w-4 h-4 animate-spin' />
+											) : (
+												<Download size={16} />
+											)}
+											<span className='hidden sm:inline '>Download PDF</span>
+											<span className='sm:hidden'>PDF</span>
+										</Button>
 									</div>
 									<div className='space-y-2 sm:space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1'>
 										{filteredEntries
@@ -460,7 +438,6 @@ export default function AdminPage() {
 																: 'border-gray-800'
 														} hover:bg-[#242B3D]`}
 													>
-														`
 														<div className='flex flex-col gap-4'>
 															{/* Sana va Soatlar */}
 															<div className='flex items-center justify-between'>
@@ -581,21 +558,6 @@ export default function AdminPage() {
 				onClose={() => setIsAddModalOpen(false)}
 				onAdd={handleAddWorker}
 			/>
-
-			<div className='bg-[#0E1422] rounded-lg p-4 mt-6'>
-				<h2 className='text-lg font-semibold text-white mb-4'>All Workers</h2>
-				<ul className='space-y-2'>
-					{workers.map(worker => (
-						<li key={worker._id} className='text-white flex gap-4 items-center'>
-							<span>{worker.username}</span>
-							<span className='text-gray-400 text-xs'>{worker.position}</span>
-							<span className='text-blue-400 text-xs'>
-								ID: {worker.employeeId}
-							</span>
-						</li>
-					))}
-				</ul>
-			</div>
 		</main>
 	)
 }

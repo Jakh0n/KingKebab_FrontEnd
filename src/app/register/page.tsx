@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { register } from '@/lib/api'
-import Cookies from 'js-cookie'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -13,7 +12,6 @@ import { ChangeEvent, FormEvent, useState } from 'react'
 
 export default function RegisterPage() {
 	const [username, setUsername] = useState('')
-	const [employeeId, setEmployeeId] = useState('')
 	const [password, setPassword] = useState('')
 	const [position, setPosition] = useState<'worker' | 'rider'>('worker')
 	const [error, setError] = useState('')
@@ -24,33 +22,10 @@ export default function RegisterPage() {
 		e.preventDefault()
 		setIsLoading(true)
 		try {
-			const response = await register(username, password, position, employeeId)
+			const response = await register(username, password, position)
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
-			Cookies.set('token', response.token, { expires: 1 })
-
-			try {
-				const token = response.token
-				const payload = JSON.parse(atob(token.split('.')[1]))
-				if (!payload || !payload.userId) {
-					localStorage.removeItem('token')
-					localStorage.removeItem('position')
-					Cookies.remove('token')
-					setError("Token noto'g'ri yoki buzilgan. Qayta login qiling.")
-					return
-				}
-				if (payload.isAdmin) {
-					router.push('/admin')
-				} else {
-					router.push('/dashboard')
-				}
-			} catch {
-				localStorage.removeItem('token')
-				localStorage.removeItem('position')
-				Cookies.remove('token')
-				setError("Token noto'g'ri yoki buzilgan. Qayta login qiling.")
-				return
-			}
+			router.push('/dashboard')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Registration failed')
 		} finally {
@@ -74,19 +49,6 @@ export default function RegisterPage() {
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
-								}
-								required
-								disabled={isLoading}
-							/>
-						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='employeeId'>Employee ID</Label>
-							<Input
-								id='employeeId'
-								placeholder='Enter your employee ID'
-								value={employeeId}
-								onChange={(e: ChangeEvent<HTMLInputElement>) =>
-									setEmployeeId(e.target.value)
 								}
 								required
 								disabled={isLoading}

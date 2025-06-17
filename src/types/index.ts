@@ -2,7 +2,6 @@ export interface User {
 	_id: string
 	username: string
 	position: string
-	employeeId: string
 }
 
 export interface TimeEntry {
