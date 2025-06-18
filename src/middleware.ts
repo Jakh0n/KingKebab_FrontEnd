@@ -5,15 +5,15 @@ export function middleware(request: NextRequest) {
 	const token = request.cookies.get('token')?.value
 	const { pathname } = request.nextUrl
 
-	// Protected routes (autentifikatsiya talab qilinadigan sahifalar)
+	// Protected routes (routes that require authentication)
 	const protectedRoutes = ['/dashboard', '/admin']
 
-	// Agar protected route ga kirmoqchi bo'lsa va token yo'q bo'lsa
+	// If trying to access protected route without token
 	if (protectedRoutes.some(route => pathname.startsWith(route)) && !token) {
 		return NextResponse.redirect(new URL('/login', request.url))
 	}
 
-	// Agar login yoki register sahifasiga kirmoqchi bo'lsa va token mavjud bo'lsa
+	// If trying to access login or register page with token
 	if ((pathname === '/login' || pathname === '/register') && token) {
 		return NextResponse.redirect(new URL('/dashboard', request.url))
 	}

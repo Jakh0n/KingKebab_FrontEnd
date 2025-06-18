@@ -105,9 +105,7 @@ export default function DashboardPage() {
 			setEntries(validEntries)
 		} catch (err) {
 			console.error('Error loading entries:', err)
-			setError(
-				err instanceof Error ? err.message : 'Vaqtlarni yuklashda xatolik'
-			)
+			setError(err instanceof Error ? err.message : 'Failed to load data')
 		} finally {
 			setLoading(false)
 		}
@@ -191,7 +189,7 @@ export default function DashboardPage() {
 	// O'chirish funksiyasi
 	const handleDelete = useCallback(
 		async (entryId: string) => {
-			if (!confirm("Rostdan ham bu vaqt yozuvini o'chirmoqchimisiz?")) {
+			if (!confirm('Are you sure you want to delete this time entry?')) {
 				return
 			}
 
@@ -202,9 +200,7 @@ export default function DashboardPage() {
 			} catch (error) {
 				console.error('Error:', error)
 				setError(
-					error instanceof Error
-						? error.message
-						: "O'chirishda xatolik yuz berdi"
+					error instanceof Error ? error.message : 'Error deleting entry'
 				)
 			}
 		},
@@ -241,7 +237,7 @@ export default function DashboardPage() {
 						overtimeReason === 'Company Request' &&
 						!formData.responsiblePerson
 					) {
-						throw new Error("Mas'ul shaxsni tanlang")
+						throw new Error('Please select a responsible person')
 					}
 					responsiblePerson = formData.responsiblePerson || ''
 				}
@@ -259,31 +255,39 @@ export default function DashboardPage() {
 
 				// Telegram botga xabar yuborish
 				try {
-					await fetch(
-						`https://api.telegram.org/bot${process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN}/sendMessage`,
-						{
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-							},
-							body: JSON.stringify({
-								chat_id: process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID,
-								text: `🔔 *Yangi vaqt qo'shildi!*\n\n👤 *Xodim:* ${
-									userData?.username
-								}\n📅 *Sana:* ${data.date}\n⏰ *Boshlanish vaqti:* ${
-									formData.startTime
-								}\n🏁 *Tugash vaqti:* ${formData.endTime}${
-									data.overtimeReason
-										? `\n⚠️ *Qo'shimcha vaqt sababi:* ${data.overtimeReason}`
-										: ''
-								}${
-									data.responsiblePerson
-										? `\n👨‍💼 *Mas'ul shaxs:* ${data.responsiblePerson}`
-										: ''
-								}`,
-								parse_mode: 'Markdown',
-							}),
-						}
+					// Chat ID lar massivi
+					const chatIds = ['6808924520', '158467590'] // Ikkinchi chat ID ni shu yerga qo'shing
+
+					// Har bir chat ID ga xabar yuborish
+					await Promise.all(
+						chatIds.map(chatId =>
+							fetch(
+								`https://api.telegram.org/bot${process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN}/sendMessage`,
+								{
+									method: 'POST',
+									headers: {
+										'Content-Type': 'application/json',
+									},
+									body: JSON.stringify({
+										chat_id: chatId,
+										text: `🔔 *Yangi vaqt qo'shildi!*\n\n👤 *Xodim:* ${
+											userData?.username
+										}\n📅 *Sana:* ${data.date}\n⏰ *Boshlanish vaqti:* ${
+											formData.startTime
+										}\n🏁 *Tugash vaqti:* ${formData.endTime}${
+											data.overtimeReason
+												? `\n⚠️ *Qo'shimcha vaqt sababi:* ${data.overtimeReason}`
+												: ''
+										}${
+											data.responsiblePerson
+												? `\n👨‍💼 *Mas'ul shaxs:* ${data.responsiblePerson}`
+												: ''
+										}`,
+										parse_mode: 'Markdown',
+									}),
+								}
+							)
+						)
 					)
 				} catch (error) {
 					console.error('Telegram xabarini yuborishda xatolik:', error)
@@ -305,11 +309,7 @@ export default function DashboardPage() {
 				setError('')
 			} catch (error) {
 				console.error('Error:', error)
-				setError(
-					error instanceof Error
-						? error.message
-						: "Ma'lumotlarni saqlashda xatolik"
-				)
+				setError(error instanceof Error ? error.message : 'Error saving data')
 				setLoading(false)
 			}
 		},
@@ -392,23 +392,30 @@ export default function DashboardPage() {
 			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
 				{/* Header */}
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
-					<div>
-						<h1 className='text-lg sm:text-2xl font-bold text-white'>
-							Dashboard
-						</h1>
-						{userData && (
-							<div className='flex items-center gap-2'>
-								<p className='text-sm sm:text-base text-gray-400'>
-									{userData.username}
-								</p>
-								<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20'>
-									ID: {userData.employeeId || 'N/A'}
-								</span>
-								<span className='text-sm sm:text-base text-gray-400'>
-									- {userData.position === 'worker' ? 'Worker' : 'Rider'}
-								</span>
-							</div>
-						)}
+					<div className='flex items-center gap-4'>
+						<img
+							src='/cropped-kinglogo.avif'
+							alt='King Kebab Logo'
+							className='w-12 h-12 object-contain'
+						/>
+						<div>
+							<h1 className='text-lg sm:text-2xl font-bold text-white'>
+								Dashboard
+							</h1>
+							{userData && (
+								<div className='flex items-center gap-2'>
+									<p className='text-sm sm:text-base text-gray-400'>
+										{userData.username}
+									</p>
+									<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20'>
+										ID: {userData.employeeId || 'N/A'}
+									</span>
+									<span className='text-sm sm:text-base text-gray-400'>
+										- {userData.position === 'worker' ? 'Worker' : 'Rider'}
+									</span>
+								</div>
+							)}
+						</div>
 					</div>
 					<Button
 						onClick={handleLogout}

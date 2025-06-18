@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { register } from '@/lib/api'
 import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
@@ -29,11 +30,7 @@ export default function RegisterPage() {
 			localStorage.setItem('employeeId', response.employeeId)
 			router.push('/dashboard')
 		} catch (err) {
-			setError(
-				err instanceof Error
-					? err.message
-					: "Ro'yxatdan o'tishda xatolik yuz berdi"
-			)
+			setError(err instanceof Error ? err.message : 'Registration failed')
 		} finally {
 			setIsLoading(false)
 		}
@@ -43,9 +40,14 @@ export default function RegisterPage() {
 		<main className='flex min-h-screen items-center justify-center p-4 bg-gray-50'>
 			<Card className='w-full max-w-md'>
 				<CardHeader>
-					<CardTitle className='text-2xl text-center'>
-						Ro&apos;yxatdan o&apos;tish
-					</CardTitle>
+					<Image
+						src='/cropped-kinglogo.avif'
+						alt='King Kebab Logo'
+						className='w-24 h-24 object-contain mb-4 mx-auto'
+						width={100}
+						height={100}
+					/>
+					<CardTitle className='text-2xl text-center'>Register</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={handleSubmit} className='space-y-4'>
@@ -53,7 +55,7 @@ export default function RegisterPage() {
 							<Label htmlFor='username'>Username</Label>
 							<Input
 								id='username'
-								placeholder='Username kiriting'
+								placeholder='Enter username'
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
@@ -63,11 +65,11 @@ export default function RegisterPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label htmlFor='password'>Parol</Label>
+							<Label htmlFor='password'>Password</Label>
 							<Input
 								id='password'
 								type='password'
-								placeholder='Parol kiriting'
+								placeholder='Enter password'
 								value={password}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPassword(e.target.value)
@@ -77,10 +79,10 @@ export default function RegisterPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label htmlFor='employeeId'>Xodim ID</Label>
+							<Label htmlFor='employeeId'>Employee ID</Label>
 							<Input
 								id='employeeId'
-								placeholder='Xodim ID kiriting'
+								placeholder='Enter employee ID'
 								value={employeeId}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setEmployeeId(e.target.value)
@@ -90,7 +92,7 @@ export default function RegisterPage() {
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label>Lavozim</Label>
+							<Label>Position</Label>
 							<div className='flex space-x-4'>
 								<label className='flex items-center space-x-2'>
 									<input
@@ -104,7 +106,7 @@ export default function RegisterPage() {
 										className='form-radio'
 										disabled={isLoading}
 									/>
-									<span>Xodim</span>
+									<span>Worker</span>
 								</label>
 								<label className='flex items-center space-x-2'>
 									<input
@@ -118,7 +120,7 @@ export default function RegisterPage() {
 										className='form-radio'
 										disabled={isLoading}
 									/>
-									<span>Yetkazib beruvchi</span>
+									<span>Rider</span>
 								</label>
 							</div>
 						</div>

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login } from '@/lib/api'
 import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
 
@@ -44,7 +46,14 @@ export default function LoginPage() {
 		<main className='flex min-h-screen items-center justify-center p-4 bg-gray-50'>
 			<Card className='w-full max-w-md'>
 				<CardHeader>
-					<CardTitle className='text-2xl text-center'>Login</CardTitle>
+					<Image
+						src='/cropped-kinglogo.avif'
+						alt='King Kebab Logo'
+						className='w-24 h-24 object-contain mb-4 mx-auto'
+						width={100}
+						height={100}
+					/>
+					<CardTitle className='text-2xl text-center'>Welcome Back</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={handleSubmit} className='space-y-4'>
@@ -52,7 +61,7 @@ export default function LoginPage() {
 							<Label htmlFor='username'>Username</Label>
 							<Input
 								id='username'
-								placeholder='Enter your username'
+								placeholder='Enter username'
 								value={username}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setUsername(e.target.value)
@@ -66,7 +75,7 @@ export default function LoginPage() {
 							<Input
 								id='password'
 								type='password'
-								placeholder='Enter your password'
+								placeholder='Enter password'
 								value={password}
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPassword(e.target.value)
@@ -86,6 +95,12 @@ export default function LoginPage() {
 								'Login'
 							)}
 						</Button>
+						<p className='text-center text-sm text-gray-500'>
+							Don&apos;t have an account?{' '}
+							<Link href='/register' className='text-blue-600 hover:underline'>
+								Register
+							</Link>
+						</p>
 					</form>
 				</CardContent>
 			</Card>

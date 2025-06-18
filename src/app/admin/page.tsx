@@ -21,7 +21,6 @@ import {
 	Download,
 	LogOut,
 	Menu,
-	NotebookPen,
 	Search,
 	Settings,
 	Timer,
@@ -29,6 +28,7 @@ import {
 	UserPlus,
 	Users,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -203,16 +203,17 @@ export default function AdminPage() {
 	const handleDownloadExcel = () => {
 		console.log('Worker Stats before Excel:', Object.values(workerStats))
 
-		// Hamma ishchilar statistikasi
+		// Workers statistics in English
 		const excelData = Object.values(workerStats).map(worker => {
 			console.log('Processing worker:', worker)
 			return {
-				'Xodim ID': worker.employeeId || 'N/A',
-				Username: worker.username,
-				'Jami soatlar': worker.totalHours,
-				'Jami kunlar': worker.regularDays + worker.overtimeDays,
-				'Regular kunlar': worker.regularDays,
-				"Qo'shimcha kunlar": worker.overtimeDays,
+				'Employee ID': worker.employeeId || 'N/A',
+				'Employee Name': worker.username,
+				'Total Hours': worker.totalHours,
+				'Total Days': worker.regularDays + worker.overtimeDays,
+				'Regular Days': worker.regularDays,
+				'Overtime Days': worker.overtimeDays,
+				Position: worker.position === 'worker' ? 'Worker' : 'Rider',
 			}
 		})
 
@@ -220,8 +221,17 @@ export default function AdminPage() {
 
 		const ws = XLSX.utils.json_to_sheet(excelData)
 		const wb = XLSX.utils.book_new()
-		XLSX.utils.book_append_sheet(wb, ws, 'Xodimlar')
-		XLSX.writeFile(wb, 'xodimlar_statistikasi.xlsx')
+		XLSX.utils.book_append_sheet(
+			wb,
+			ws,
+			`${months[selectedMonth - 1]} ${selectedYear}`
+		)
+
+		// Create filename with selected month and year
+		const fileName = `King_Kebab_${
+			months[selectedMonth - 1]
+		}_${selectedYear}.xlsx`
+		XLSX.writeFile(wb, fileName)
 	}
 
 	if (loading) {
@@ -239,91 +249,97 @@ export default function AdminPage() {
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 lg:p-6 bg-[#0A0F1C]'>
-			<div className='max-w-[1400px] mx-auto space-y-4'>
+			<div className='max-w-7xl mx-auto space-y-4'>
 				{/* Header */}
-				<div className='bg-[#0E1422] p-3 sm:p-4 lg:p-6 rounded-lg shadow-lg'>
-					<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
-						<div className='flex items-center gap-4 w-full justify-between'>
-							<h1 className='text-xl sm:text-2xl font-bold text-[#4E7BEE] flex items-center gap-2 min-w-max'>
-								<NotebookPen size={28} className='text-[#4E7BEE]' />
-								<span className='text-white'>Admin</span> Panel
+				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
+					<div className='flex items-center gap-4 w-full sm:w-auto'>
+						<Image
+							src='/cropped-kinglogo.avif'
+							alt='King Kebab Logo'
+							className='w-10 h-10 sm:w-12 sm:h-12 object-contain'
+							width={100}
+							height={100}
+						/>
+						<div>
+							<h1 className='text-base sm:text-lg md:text-2xl font-bold text-white'>
+								King Kebab | Admin Panel
 							</h1>
+						</div>
+					</div>
 
-							{/* Admin Actions Dropdown */}
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-10 w-10 bg-[#1A1F2E] hover:bg-[#2A3447]'
-									>
-										<Menu className='h-5 w-5 text-[#4E7BEE]' />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align='end'
-									className='w-56 bg-[#1A1F2E] border-[#2A3447] text-white'
-								>
-									<DropdownMenuItem
-										className='hover:bg-[#2A3447] cursor-pointer group'
-										onClick={() => setIsAddModalOpen(true)}
-									>
-										<UserPlus className='mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80' />
-										<span>Add Worker</span>
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										className='hover:bg-[#2A3447] cursor-pointer group'
-										onClick={handleDownloadExcel}
-									>
-										<Download className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
-										<span>Download Excel</span>
-									</DropdownMenuItem>
-									<DropdownMenuItem className='hover:bg-[#2A3447] cursor-pointer group'>
-										<Settings className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
-										<span>Settings</span>
-									</DropdownMenuItem>
-									<DropdownMenuSeparator className='bg-[#2A3447]' />
-									<DropdownMenuItem
-										className='hover:bg-[#2A3447] cursor-pointer group text-[#FF3B6F] focus:text-[#FF3B6F]'
-										onClick={handleLogout}
-									>
-										<LogOut className='mr-2 h-4 w-4 group-hover:text-[#FF3B6F]/80' />
-										<span>Logout</span>
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+					<div className='flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end'>
+						<div className='flex items-center gap-2 flex-1 sm:flex-auto'>
+							<select
+								className='bg-[#1A1F2E] text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
+								value={selectedMonth}
+								onChange={e => setSelectedMonth(parseInt(e.target.value))}
+							>
+								{months.map((month, index) => (
+									<option key={index + 1} value={index + 1}>
+										{month}
+									</option>
+								))}
+							</select>
+
+							<select
+								className='bg-[#1A1F2E] text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm w-[80px] sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
+								value={selectedYear}
+								onChange={e => setSelectedYear(parseInt(e.target.value))}
+							>
+								{Array.from(
+									{ length: 5 },
+									(_, i) => new Date().getFullYear() - 2 + i
+								).map(year => (
+									<option key={year} value={year}>
+										{year}
+									</option>
+								))}
+							</select>
 						</div>
 
-						<div className='flex flex-col sm:flex-row lg:flex items-stretch sm:items-center gap-3 w-full sm:w-auto'>
-							<div className='flex xs:flex-row gap-3 w-full sm:w-auto'>
-								<select
-									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
-									value={selectedMonth}
-									onChange={e => setSelectedMonth(parseInt(e.target.value))}
+						{/* Admin Actions Dropdown */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-9 w-9 sm:h-10 sm:w-10 bg-[#1A1F2E] hover:bg-[#2A3447] flex-shrink-0'
 								>
-									{months.map((month, index) => (
-										<option key={index + 1} value={index + 1}>
-											{month}
-										</option>
-									))}
-								</select>
-
-								<select
-									className='bg-[#1A1F2E] text-white px-4 py-2.5 rounded-lg text-sm w-full sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer'
-									value={selectedYear}
-									onChange={e => setSelectedYear(parseInt(e.target.value))}
+									<Menu className='h-4 w-4 sm:h-5 sm:w-5 text-[#4E7BEE]' />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent
+								align='end'
+								className='w-56 bg-[#1A1F2E] border-[#2A3447] text-white'
+							>
+								<DropdownMenuItem
+									className='hover:bg-[#2A3447] cursor-pointer group'
+									onClick={() => setIsAddModalOpen(true)}
 								>
-									{Array.from(
-										{ length: 5 },
-										(_, i) => new Date().getFullYear() - 2 + i
-									).map(year => (
-										<option key={year} value={year}>
-											{year}
-										</option>
-									))}
-								</select>
-							</div>
-						</div>
+									<UserPlus className='mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80' />
+									<span>Add Worker</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									className='hover:bg-[#2A3447] cursor-pointer group'
+									onClick={handleDownloadExcel}
+								>
+									<Download className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
+									<span>Download Excel</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem className='hover:bg-[#2A3447] cursor-pointer group'>
+									<Settings className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
+									<span>Settings</span>
+								</DropdownMenuItem>
+								<DropdownMenuSeparator className='bg-[#2A3447]' />
+								<DropdownMenuItem
+									className='hover:bg-[#2A3447] cursor-pointer group text-[#FF3B6F] focus:text-[#FF3B6F]'
+									onClick={handleLogout}
+								>
+									<LogOut className='mr-2 h-4 w-4 group-hover:text-[#FF3B6F]/80' />
+									<span>Logout</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 				</div>
 
