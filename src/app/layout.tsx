@@ -31,13 +31,13 @@ export const metadata: Metadata = {
 	publisher: 'King Kebab',
 	robots: 'index, follow',
 	icons: {
-		icon: '/cropped-kinglogo.avif',
+		icon: '/KingLogo.png',
 	},
 	openGraph: {
 		title: 'King Kebab | South Korea',
 		images: [
 			{
-				url: '/cropped-kinglogo.avif',
+				url: '/KingLogo.png',
 				width: 800,
 				height: 600,
 			},

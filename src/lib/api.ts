@@ -1,14 +1,18 @@
-import { ApiError, AuthResponse, TimeEntry, TimeEntryFormData } from '@/types'
+import {
+	Announcement,
+	ApiError,
+	AuthResponse,
+	TimeEntry,
+	TimeEntryFormData,
+} from '@/types'
 import Cookies from 'js-cookie'
 
-const API_URL =
-	process.env.NEXT_PUBLIC_API_URL ||
-	'https://kingkebab-backend.onrender.com/api'
+const API_URL = 'http://localhost:5000/api'
 
 async function handleResponse<T>(response: Response): Promise<T> {
 	const data = await response.json()
 	if (!response.ok) {
-		const errorMessage = (data as ApiError).message || "Noma'lum xato yuz berdi"
+		const errorMessage = (data as ApiError).message || 'Unknown error occurred'
 		throw new Error(errorMessage)
 	}
 	return data as T
@@ -67,7 +71,7 @@ export async function addTimeEntry(
 
 	// Ma'lumotlarni tekshirish
 	if (!data.startTime || !data.endTime || !data.date) {
-		throw new Error("Barcha maydonlarni to'ldiring")
+		throw new Error('Please fill in all fields')
 	}
 
 	// Vaqtlarni to'g'ri formatga o'tkazish
@@ -210,7 +214,7 @@ export async function deleteTimeEntry(entryId: string): Promise<void> {
 	})
 
 	if (!response.ok) {
-		throw new Error("O'chirishda xatolik yuz berdi")
+		throw new Error('Error deleting entry')
 	}
 }
 
@@ -223,7 +227,7 @@ export async function updateTimeEntry(
 
 	// Ma'lumotlarni tekshirish
 	if (!data.startTime || !data.endTime || !data.date) {
-		throw new Error("Barcha maydonlarni to'ldiring")
+		throw new Error('Please fill in all fields')
 	}
 
 	// Vaqtlarni to'g'ri formatga o'tkazish
@@ -273,4 +277,90 @@ export async function registerWorker(data: {
 	})
 
 	return handleResponse(response)
+}
+
+// Announcements
+export async function getAnnouncements(): Promise<Announcement[]> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/announcements`, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+
+	if (!response.ok) {
+		throw new Error('Failed to fetch announcements')
+	}
+
+	return response.json()
+}
+
+export async function createAnnouncement(data: {
+	title: string
+	content: string
+	type: 'info' | 'warning' | 'success'
+}): Promise<Announcement> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/announcements`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+
+	if (!response.ok) {
+		throw new Error('Failed to create announcement')
+	}
+
+	return response.json()
+}
+
+export async function updateAnnouncement(
+	id: string,
+	data: {
+		title: string
+		content: string
+		type: 'info' | 'warning' | 'success'
+		isActive: boolean
+	}
+): Promise<Announcement> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/announcements/${id}`, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+
+	if (!response.ok) {
+		throw new Error('Failed to update announcement')
+	}
+
+	return response.json()
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/announcements/${id}`, {
+		method: 'DELETE',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+
+	if (!response.ok) {
+		throw new Error('Failed to delete announcement')
+	}
 }

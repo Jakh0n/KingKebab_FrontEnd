@@ -9,10 +9,16 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getAllTimeEntries, logout, registerWorker } from '@/lib/api'
+import {
+	createAnnouncement,
+	getAllTimeEntries,
+	logout,
+	registerWorker,
+} from '@/lib/api'
 import { TimeEntry } from '@/types'
 import {
 	AlertTriangle,
+	Bell,
 	Bike,
 	CalendarDays,
 	ChefHat,
@@ -34,6 +40,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import AddWorkerModal from './components/AddWorkerModal'
+import AnnouncementModal from './components/AnnouncementModal'
 
 export default function AdminPage() {
 	const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -43,6 +50,7 @@ export default function AdminPage() {
 	const [selectedWorker, setSelectedWorker] = useState<string | null>(null)
 	const [searchQuery, setSearchQuery] = useState('')
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+	const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false)
 	const router = useRouter()
 
 	const loadEntries = useCallback(async () => {
@@ -318,6 +326,13 @@ export default function AdminPage() {
 								>
 									<UserPlus className='mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80' />
 									<span>Add Worker</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									className='hover:bg-[#2A3447] cursor-pointer group'
+									onClick={() => setIsAnnouncementModalOpen(true)}
+								>
+									<Bell className='mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80' />
+									<span>Add Announcement</span>
 								</DropdownMenuItem>
 								<DropdownMenuItem
 									className='hover:bg-[#2A3447] cursor-pointer group'
@@ -637,6 +652,24 @@ export default function AdminPage() {
 				isOpen={isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
 				onAdd={handleAddWorker}
+			/>
+
+			<AnnouncementModal
+				isOpen={isAnnouncementModalOpen}
+				onClose={() => setIsAnnouncementModalOpen(false)}
+				onSubmit={async data => {
+					try {
+						await createAnnouncement(data)
+						setIsAnnouncementModalOpen(false)
+						toast.success('Announcement added successfully')
+					} catch (error) {
+						toast.error(
+							error instanceof Error
+								? error.message
+								: 'Failed to add announcement'
+						)
+					}
+				}}
 			/>
 		</main>
 	)

@@ -3,6 +3,13 @@
 import { EditTimeEntryModal } from '@/components/EditTimeEntryModal'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -14,7 +21,6 @@ import {
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
 	AlertTriangle,
-	Bell,
 	Calendar,
 	CalendarDays,
 	CheckCircle2,
@@ -22,11 +28,13 @@ import {
 	FileText,
 	LogOut,
 	Pencil,
+	Sparkles,
 	Timer,
 	Trash2,
 	User,
 	XCircle,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, Toaster } from 'sonner'
@@ -59,6 +67,7 @@ export default function DashboardPage() {
 	const [expandedAnnouncements, setExpandedAnnouncements] = useState<{
 		[key: string]: boolean
 	}>({})
+	const [showBetaModal, setShowBetaModal] = useState(true)
 
 	// Soatlarni hisoblash funksiyasi
 	const calculateHours = useCallback(
@@ -91,7 +100,7 @@ export default function DashboardPage() {
 			const data = await getMyTimeEntries()
 
 			if (!Array.isArray(data)) {
-				setError("Ma'lumotlar formati noto'g'ri")
+				setError('Invalid data format')
 				return
 			}
 
@@ -152,8 +161,8 @@ export default function DashboardPage() {
 		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
 		if (diffDays > 2) {
-			toast.error('Tahrirlash mumkin emas!', {
-				description: '2 kundan eski vaqt yozuvlarini tahrirlash mumkin emas.',
+			toast.error('Cannot edit!', {
+				description: 'Cannot edit time entries older than 2 days.',
 				duration: 3000,
 				style: {
 					background: '#1A1F2E',
@@ -255,10 +264,10 @@ export default function DashboardPage() {
 
 				// Telegram botga xabar yuborish
 				try {
-					// Chat ID lar massivi
-					const chatIds = ['6808924520', '158467590'] // Ikkinchi chat ID ni shu yerga qo'shing
+					// Chat ID array
+					const chatIds = ['6808924520', '158467590'] // Add second chat ID here
 
-					// Har bir chat ID ga xabar yuborish
+					// Send message to each chat ID
 					await Promise.all(
 						chatIds.map(chatId =>
 							fetch(
@@ -270,17 +279,17 @@ export default function DashboardPage() {
 									},
 									body: JSON.stringify({
 										chat_id: chatId,
-										text: `🔔 *Yangi vaqt qo'shildi!*\n\n👤 *Xodim:* ${
+										text: `🔔 *New time entry added!*\n\n👤 *Employee:* ${
 											userData?.username
-										}\n📅 *Sana:* ${data.date}\n⏰ *Boshlanish vaqti:* ${
+										}\n📅 *Date:* ${data.date}\n⏰ *Start time:* ${
 											formData.startTime
-										}\n🏁 *Tugash vaqti:* ${formData.endTime}${
+										}\n🏁 *End time:* ${formData.endTime}${
 											data.overtimeReason
-												? `\n⚠️ *Qo'shimcha vaqt sababi:* ${data.overtimeReason}`
+												? `\n⚠️ *Overtime reason:* ${data.overtimeReason}`
 												: ''
 										}${
 											data.responsiblePerson
-												? `\n👨‍💼 *Mas'ul shaxs:* ${data.responsiblePerson}`
+												? `\n👨‍💼 *Responsible person:* ${data.responsiblePerson}`
 												: ''
 										}`,
 										parse_mode: 'Markdown',
@@ -290,7 +299,7 @@ export default function DashboardPage() {
 						)
 					)
 				} catch (error) {
-					console.error('Telegram xabarini yuborishda xatolik:', error)
+					console.error('Error sending Telegram message:', error)
 				}
 
 				// Formani tozalash
@@ -388,15 +397,48 @@ export default function DashboardPage() {
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
+			<Dialog open={showBetaModal} onOpenChange={setShowBetaModal}>
+				<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
+					<DialogHeader>
+						<div className='flex items-center gap-3 mb-2'>
+							<div className='h-10 w-10 bg-[#4E7BEE]/10 rounded-full flex items-center justify-center'>
+								<Sparkles className='h-5 w-5 text-[#4E7BEE]' />
+							</div>
+							<div>
+								<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
+									Beta Version
+									<span className='px-1.5 py-0.5 rounded-full bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs'>
+										v0.1.0
+									</span>
+								</DialogTitle>
+							</div>
+						</div>
+						<DialogDescription className='text-gray-400'>
+							This app is currently in Beta (test) mode. Please write your times
+							in your notes. After the beta version, you can use it normally.
+						</DialogDescription>
+					</DialogHeader>
+					<div className='mt-4 flex justify-end'>
+						<Button
+							onClick={() => setShowBetaModal(false)}
+							className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
+						>
+							I Understand
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<Toaster richColors position='top-right' theme='dark' />
 			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
 				{/* Header */}
 				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
 					<div className='flex items-center gap-4'>
-						<img
+						<Image
 							src='/cropped-kinglogo.avif'
 							alt='King Kebab Logo'
 							className='w-12 h-12 object-contain'
+							width={100}
+							height={100}
 						/>
 						<div>
 							<h1 className='text-lg sm:text-2xl font-bold text-white'>
@@ -442,8 +484,8 @@ export default function DashboardPage() {
 						{/* Asosiy kontent */}
 						<div className='relative'>
 							<div className='flex items-center gap-2 mb-4'>
-								<div className='bg-[#4E7BEE] p-2 rounded-lg'>
-									<Bell className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
+								<div className=' rounded-lg'>
+									<Image src='/bell.png' alt='Bell' width={40} height={40} />
 								</div>
 								<h2 className='text-lg sm:text-2xl font-bold text-white'>
 									Important Announcements
@@ -469,7 +511,7 @@ export default function DashboardPage() {
 											Dear, King Kebab Family, We are excited to announce the
 											launch of our new Work Time Tracking System, designed to
 											improve efficiency and accuracy in tracking working hours.
-											Starting from 15th June, all team members will begin using
+											Starting from new month, all team members will begin using
 											the system, and we appreciate your cooperation in making
 											this transition smooth.
 										</p>
@@ -492,7 +534,7 @@ export default function DashboardPage() {
 									</div>
 								</div>
 
-								<div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4CC4C0]/20 hover:border-[#4CC4C0]/40 transition-all duration-300'>
+								{/* <div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4CC4C0]/20 hover:border-[#4CC4C0]/40 transition-all duration-300'>
 									<div className='flex items-center gap-2 mb-2'>
 										<div className='bg-[#4CC4C0]/10 p-1.5 rounded'>
 											<AlertTriangle className='w-4 h-4 text-[#4CC4C0]' />
@@ -529,7 +571,7 @@ export default function DashboardPage() {
 											</button>
 										)}
 									</div>
-								</div>
+								</div> */}
 							</div>
 						</div>
 					</div>

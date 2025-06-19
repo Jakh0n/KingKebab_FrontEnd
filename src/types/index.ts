@@ -39,3 +39,13 @@ export interface AuthResponse {
 export interface ApiError {
 	message: string
 }
+
+export interface Announcement {
+	_id: string
+	title: string
+	content: string
+	type: 'info' | 'warning' | 'success'
+	isActive: boolean
+	createdAt: string
+	updatedAt: string
+}
