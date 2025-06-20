@@ -21,8 +21,40 @@ export default function LoginPage() {
 	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault()
 		setIsLoading(true)
+		setError('')
+
 		try {
+			if (!username || !password) {
+				throw new Error('Username and password are required')
+			}
+
+			// Rate limiting
+			const lastAttempt = localStorage.getItem('lastLoginAttempt')
+			if (lastAttempt) {
+				const timeDiff = Date.now() - parseInt(lastAttempt)
+				if (timeDiff < 2000) {
+					// 2 sekund kutish
+					throw new Error('Please wait before trying again')
+				}
+			}
+			localStorage.setItem('lastLoginAttempt', Date.now().toString())
+
 			const response = await login(username, password)
+
+			if (!response || !response.token) {
+				throw new Error('Invalid response from server')
+			}
+
+			// Token validatsiyasi
+			try {
+				const payload = JSON.parse(atob(response.token.split('.')[1]))
+				if (!payload.exp || Date.now() >= payload.exp * 1000) {
+					throw new Error('Token has expired')
+				}
+			} catch {
+				throw new Error('Invalid token format')
+			}
+
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
 
@@ -36,6 +68,7 @@ export default function LoginPage() {
 				router.push('/dashboard')
 			}
 		} catch (err) {
+			console.error('Login error:', err)
 			setError(err instanceof Error ? err.message : 'Login failed')
 		} finally {
 			setIsLoading(false)
