@@ -41,7 +41,7 @@ export default function RegisterPage() {
 			<Card className='w-full max-w-md'>
 				<CardHeader>
 					<Image
-						src='/cropped-kinglogo.avif'
+						src='/image.png'
 						alt='King Kebab Logo'
 						className='w-24 h-24 object-contain mb-4 mx-auto'
 						width={100}
