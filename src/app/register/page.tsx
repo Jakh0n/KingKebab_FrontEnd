@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function RegisterPage() {
 	const [username, setUsername] = useState('')
@@ -28,9 +29,22 @@ export default function RegisterPage() {
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
 			localStorage.setItem('employeeId', response.employeeId)
+
+			// Muvaffaqiyatli registratsiya uchun toast
+			toast.success('Successfully registered!', {
+				description: `Welcome to King Kebab, ${username}!`,
+				duration: 3000,
+			})
+
 			router.push('/dashboard')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Registration failed')
+			// Xatolik uchun toast
+			toast.error('Registration failed', {
+				description:
+					err instanceof Error ? err.message : 'Something went wrong',
+				duration: 3000,
+			})
 		} finally {
 			setIsLoading(false)
 		}

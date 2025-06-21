@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
 	const [username, setUsername] = useState('')
@@ -65,6 +66,12 @@ export default function LoginPage() {
 			const token = response.token
 			const payload = JSON.parse(atob(token.split('.')[1]))
 
+			// Muvaffaqiyatli login uchun toast
+			toast.success('Successfully logged in!', {
+				description: `Welcome back, ${username}!`,
+				duration: 3000,
+			})
+
 			if (payload.isAdmin) {
 				router.push('/admin')
 			} else {
@@ -73,6 +80,12 @@ export default function LoginPage() {
 		} catch (err) {
 			console.error('Login error:', err)
 			setError(err instanceof Error ? err.message : 'Login failed')
+			// Xatolik uchun toast
+			toast.error('Login failed', {
+				description:
+					err instanceof Error ? err.message : 'Something went wrong',
+				duration: 3000,
+			})
 		} finally {
 			setIsLoading(false)
 		}
