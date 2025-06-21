@@ -22,6 +22,9 @@ export async function login(
 	username: string,
 	password: string
 ): Promise<AuthResponse> {
+	// Avval barcha storage'larni tozalash
+	logout()
+
 	const response = await fetch(`${API_URL}/auth/login`, {
 		method: 'POST',
 		headers: {
@@ -45,6 +48,9 @@ export async function register(
 	position: string,
 	employeeId: string
 ): Promise<AuthResponse> {
+	// Avval barcha storage'larni tozalash
+	logout()
+
 	const response = await fetch(`${API_URL}/auth/register`, {
 		method: 'POST',
 		headers: {
@@ -264,6 +270,9 @@ export async function registerWorker(data: {
 	isAdmin: boolean
 	employeeId: string
 }) {
+	// Avval barcha storage'larni tozalash
+	logout()
+
 	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 
