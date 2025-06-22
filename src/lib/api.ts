@@ -7,7 +7,7 @@ import {
 } from '@/types'
 import Cookies from 'js-cookie'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_URL = 'http://localhost:5000/api'
 
 async function handleResponse<T>(response: Response): Promise<T> {
 	const data = await response.json()
@@ -22,9 +22,6 @@ export async function login(
 	username: string,
 	password: string
 ): Promise<AuthResponse> {
-	// Avval barcha storage'larni tozalash
-	logout()
-
 	const response = await fetch(`${API_URL}/auth/login`, {
 		method: 'POST',
 		headers: {
@@ -48,9 +45,6 @@ export async function register(
 	position: string,
 	employeeId: string
 ): Promise<AuthResponse> {
-	// Avval barcha storage'larni tozalash
-	logout()
-
 	const response = await fetch(`${API_URL}/auth/register`, {
 		method: 'POST',
 		headers: {
@@ -258,9 +252,9 @@ export async function updateTimeEntry(
 
 // Logout funksiyasini qo'shamiz
 export function logout() {
-	localStorage.clear() // Barcha localStorage ma'lumotlarini tozalash
+	localStorage.removeItem('token')
+	localStorage.removeItem('position')
 	Cookies.remove('token')
-	sessionStorage.clear() // SessionStorage'ni ham tozalash
 }
 
 export async function registerWorker(data: {
@@ -270,9 +264,6 @@ export async function registerWorker(data: {
 	isAdmin: boolean
 	employeeId: string
 }) {
-	// Avval barcha storage'larni tozalash
-	logout()
-
 	const token = localStorage.getItem('token')
 	if (!token) throw new Error('Not authenticated')
 

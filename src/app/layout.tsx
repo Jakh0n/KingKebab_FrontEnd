@@ -15,28 +15,39 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-	metadataBase: new URL('https://www.kingkebab.co.kr/'),
-	title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
+	title: 'King Kebab | South Korea',
 	description:
-		'King Kebab - The best and most delicious kebab restaurant in Korea. We serve you the finest dishes from Turkish and Uzbek cuisine. Fast and quality service, affordable prices, and amazing taste.',
-	authors: [
-		{
-			name: 'Jakhon Yokubov',
-			url: 'https://flami.org',
-		},
+		'Best kebab restaurant in South Korea. Order delicious kebabs, shawarma, and other Turkish dishes.',
+	keywords: [
+		'kebab',
+		'turkish food',
+		'restaurant',
+		'seoul',
+		'delivery',
+		'shawarma',
 	],
-	icons: { icon: '/image.png' },
+	authors: [{ name: 'Jakhon Yokubov' }],
+	creator: 'Jakhon Yokubov',
+	publisher: 'King Kebab',
+	robots: 'index, follow',
+	icons: {
+		icon: '/KingLogo.png',
+	},
 	openGraph: {
-		title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
+		title: 'King Kebab | South Korea',
+		images: [
+			{
+				url: '/KingLogo.png',
+				width: 800,
+				height: 600,
+			},
+		],
 		description:
-			'King Kebab - The best and most delicious kebab restaurant in Korea. We serve you the finest dishes from Turkish and Uzbek cuisine. Fast and quality service, affordable prices, and amazing taste.',
-		type: 'website',
+			'Best kebab restaurant in South Korea. Order delicious kebabs, shawarma, and other Turkish dishes.',
 		url: 'https://www.kingkebab.co.kr',
-		locale: 'kr-KR',
-		images: '/image.png',
-		countryName: 'Korea',
 		siteName: 'King Kebab',
-		emails: 'info@kingkebab.co.kr',
+		locale: 'ko_KR',
+		type: 'website',
 	},
 }
 

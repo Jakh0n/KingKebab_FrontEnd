@@ -68,7 +68,6 @@ export default function DashboardPage() {
 		[key: string]: boolean
 	}>({})
 	const [showBetaModal, setShowBetaModal] = useState(true)
-	const [currentPage, setCurrentPage] = useState(1)
 
 	// Soatlarni hisoblash funksiyasi
 	const calculateHours = useCallback(
@@ -98,18 +97,6 @@ export default function DashboardPage() {
 		try {
 			setLoading(true)
 			setError('')
-
-			// Cache key yaratish
-			const cacheKey = `timeEntries_${selectedMonth}_${selectedYear}`
-
-			// Cache dan tekshirish
-			const cachedData = localStorage.getItem(cacheKey)
-			if (cachedData) {
-				setEntries(JSON.parse(cachedData))
-				setLoading(false)
-				return
-			}
-
 			const data = await getMyTimeEntries()
 
 			if (!Array.isArray(data)) {
@@ -124,8 +111,6 @@ export default function DashboardPage() {
 				endTime: new Date(entry.endTime).toISOString(),
 			}))
 
-			// Cache ga saqlash
-			localStorage.setItem(cacheKey, JSON.stringify(validEntries))
 			setEntries(validEntries)
 		} catch (err) {
 			console.error('Error loading entries:', err)
@@ -133,7 +118,7 @@ export default function DashboardPage() {
 		} finally {
 			setLoading(false)
 		}
-	}, [selectedMonth, selectedYear])
+	}, [])
 
 	useEffect(() => {
 		const token = localStorage.getItem('token')
@@ -359,9 +344,8 @@ export default function DashboardPage() {
 	// }
 
 	// Tanlangan oyning vaqtlarini filterlash va statistikani hisoblash
-	const { filteredEntries, stats, totalPages } = useMemo(() => {
-		// Avval barcha yozuvlarni filterlash
-		const allFilteredEntries = entries
+	const { filteredEntries, stats } = useMemo(() => {
+		const filtered = entries
 			.filter(entry => {
 				const entryDate = new Date(entry.date)
 				return (
@@ -371,38 +355,19 @@ export default function DashboardPage() {
 			})
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-		// Pagination uchun
-		const itemsPerPage = 10
-		const startIndex = (currentPage - 1) * itemsPerPage
-		const endIndex = startIndex + itemsPerPage
-
-		// Sahifadagi yozuvlarni ajratib olish
-		const paginatedEntries = allFilteredEntries.slice(startIndex, endIndex)
-
-		// Statistikani hisoblash
-		const stats = allFilteredEntries.reduce(
-			(acc, entry) => {
-				acc.totalHours += entry.hours
-				if (entry.hours <= 12) {
-					acc.regularDays++
-				} else {
-					acc.overtimeDays++
-				}
-				return acc
-			},
-			{
-				totalHours: 0,
-				regularDays: 0,
-				overtimeDays: 0,
-			}
-		)
+		const totalHours = filtered.reduce((sum, entry) => sum + entry.hours, 0)
+		const regularDays = filtered.filter(entry => entry.hours <= 12).length
+		const overtimeDays = filtered.filter(entry => entry.hours > 12).length
 
 		return {
-			filteredEntries: paginatedEntries,
-			stats,
-			totalPages: Math.ceil(allFilteredEntries.length / itemsPerPage),
+			filteredEntries: filtered,
+			stats: {
+				totalHours,
+				regularDays,
+				overtimeDays,
+			},
 		}
-	}, [entries, selectedMonth, selectedYear, currentPage])
+	}, [entries, selectedMonth, selectedYear])
 
 	// Oylar ro'yxati
 	const months = useMemo(
@@ -788,7 +753,6 @@ export default function DashboardPage() {
 				</Card>
 
 				{/* Vaqt yozuvlari ro'yxati */}
-
 				<Card className='bg-[#0E1422] border-none text-white'>
 					<div className='p-4 sm:p-6'>
 						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6'>
@@ -804,10 +768,7 @@ export default function DashboardPage() {
 									</Label>
 									<select
 										value={selectedMonth}
-										onChange={e => {
-											setSelectedMonth(parseInt(e.target.value))
-											setCurrentPage(1)
-										}}
+										onChange={e => setSelectedMonth(parseInt(e.target.value))}
 										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
 									>
 										{months.map(month => (
@@ -824,10 +785,7 @@ export default function DashboardPage() {
 									</Label>
 									<select
 										value={selectedYear}
-										onChange={e => {
-											setSelectedYear(parseInt(e.target.value))
-											setCurrentPage(1)
-										}}
+										onChange={e => setSelectedYear(parseInt(e.target.value))}
 										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
 									>
 										{[2023, 2024, 2025].map(year => (
@@ -840,8 +798,7 @@ export default function DashboardPage() {
 							</div>
 						</div>
 
-						{/* Time entries list */}
-						<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2 mb-4'>
+						<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2'>
 							{loading ? (
 								<p className='text-center text-gray-400 text-sm'>Loading...</p>
 							) : error ? (
@@ -1014,33 +971,6 @@ export default function DashboardPage() {
 								</div>
 							)}
 						</div>
-
-						{/* Pagination */}
-						{totalPages > 1 && (
-							<div className='flex items-center justify-center gap-2'>
-								<Button
-									variant='outline'
-									size='sm'
-									onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-									disabled={currentPage === 1}
-									className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
-								>
-									Previous
-								</Button>
-								<span className='text-sm text-gray-400'>
-									Page {currentPage} of {totalPages}
-								</span>
-								<Button
-									variant='outline'
-									size='sm'
-									onClick={() => setCurrentPage(prev => prev + 1)}
-									disabled={currentPage >= totalPages}
-									className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
-								>
-									Next
-								</Button>
-							</div>
-						)}
 					</div>
 				</Card>
 			</div>
