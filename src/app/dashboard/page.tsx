@@ -62,7 +62,7 @@ export default function DashboardPage() {
 	const [selectedDate, setSelectedDate] = useState(new Date())
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 	const router = useRouter()
-	const [isLoading, setIsLoading] = useState(false)
+	const [logoutLoading, setLogoutLoading] = useState(false)
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 	const [expandedAnnouncements, setExpandedAnnouncements] = useState<{
 		[key: string]: boolean
@@ -70,20 +70,27 @@ export default function DashboardPage() {
 	const [showBetaModal, setShowBetaModal] = useState(true)
 	const [currentPage, setCurrentPage] = useState(1)
 
-	// Soatlarni hisoblash funksiyasi
+	// Soatlarni hisoblash funksiyasi - backend bilan mos kelishi uchun
 	const calculateHours = useCallback(
 		(startTime: string, endTime: string): number => {
 			const [startHours, startMinutes] = startTime.split(':').map(Number)
 			const [endHours, endMinutes] = endTime.split(':').map(Number)
 
-			let hours = endHours - startHours
-			const minutes = (endMinutes - startMinutes) / 60
-
-			if (hours < 0) {
-				hours = 24 + hours
+			let workHours
+			if (
+				endHours < startHours ||
+				(endHours === startHours && endMinutes < startMinutes)
+			) {
+				// Agar tugash vaqti boshlanish vaqtidan kichik bo'lsa (masalan, 21:00 - 09:00)
+				workHours = 24 - startHours + endHours
+				workHours = workHours + (endMinutes - startMinutes) / 60
+			} else {
+				// Oddiy holat (masalan, 09:00 - 17:00)
+				workHours = endHours - startHours + (endMinutes - startMinutes) / 60
 			}
 
-			return hours + minutes
+			// Backend bilan bir xil: Number(workHours.toFixed(1))
+			return Number(workHours.toFixed(1))
 		},
 		[]
 	)
@@ -102,14 +109,7 @@ export default function DashboardPage() {
 			// Cache key yaratish
 			const cacheKey = `timeEntries_${selectedMonth}_${selectedYear}`
 
-			// Cache dan tekshirish
-			const cachedData = localStorage.getItem(cacheKey)
-			if (cachedData) {
-				setEntries(JSON.parse(cachedData))
-				setLoading(false)
-				return
-			}
-
+			// Har doim fresh data olish uchun cache ni tekshirmasdan to'g'ridan-to'g'ri API dan olish
 			const data = await getMyTimeEntries()
 
 			if (!Array.isArray(data)) {
@@ -122,6 +122,8 @@ export default function DashboardPage() {
 				date: new Date(entry.date).toISOString().split('T')[0],
 				startTime: new Date(entry.startTime).toISOString(),
 				endTime: new Date(entry.endTime).toISOString(),
+				// Backend calculation bilan mos kelishi uchun
+				hours: Number(entry.hours.toFixed(1)),
 			}))
 
 			// Cache ga saqlash
@@ -129,7 +131,15 @@ export default function DashboardPage() {
 			setEntries(validEntries)
 		} catch (err) {
 			console.error('Error loading entries:', err)
-			setError(err instanceof Error ? err.message : 'Failed to load data')
+			// Fallback: cache dan olishga harakat qilish
+			const cacheKey = `timeEntries_${selectedMonth}_${selectedYear}`
+			const cachedData = localStorage.getItem(cacheKey)
+			if (cachedData) {
+				console.log('Using cached data as fallback')
+				setEntries(JSON.parse(cachedData))
+			} else {
+				setError(err instanceof Error ? err.message : 'Failed to load data')
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -160,11 +170,31 @@ export default function DashboardPage() {
 		}
 	}, [selectedMonth, selectedYear, loadEntries, userData])
 
-	const handleLogout = useCallback(() => {
-		setIsLoading(true)
-		logout()
-		router.push('/login')
-		setIsLoading(false)
+	const handleLogout = useCallback(async () => {
+		try {
+			setLogoutLoading(true)
+			toast.info('Logging out...', {
+				description: 'Please wait while we log you out safely.',
+				duration: 2000,
+			})
+
+			// Add a small delay to show the loading state
+			await new Promise(resolve => setTimeout(resolve, 1000))
+
+			await logout()
+
+			// Clear all local storage data
+			localStorage.removeItem('token')
+			localStorage.removeItem('position')
+			localStorage.removeItem('employeeId')
+
+			router.push('/login')
+		} catch (error) {
+			console.error('Logout error:', error)
+			toast.error('Error logging out. Please try again.')
+		} finally {
+			setLogoutLoading(false)
+		}
 	}, [router])
 
 	// Tahrirlash funksiyasi
@@ -379,11 +409,13 @@ export default function DashboardPage() {
 		// Sahifadagi yozuvlarni ajratib olish
 		const paginatedEntries = allFilteredEntries.slice(startIndex, endIndex)
 
-		// Statistikani hisoblash
+		// Statistikani hisoblash - backend bilan mos kelishi uchun to'g'ri yumaloqlash
 		const stats = allFilteredEntries.reduce(
 			(acc, entry) => {
-				acc.totalHours += entry.hours
-				if (entry.hours <= 12) {
+				// Backend Number(workHours.toFixed(1)) bilan mos kelishi uchun
+				const entryHours = Number(entry.hours.toFixed(1))
+				acc.totalHours += entryHours
+				if (entryHours <= 12) {
 					acc.regularDays++
 				} else {
 					acc.overtimeDays++
@@ -396,6 +428,9 @@ export default function DashboardPage() {
 				overtimeDays: 0,
 			}
 		)
+
+		// Total hours ni ham to'g'ri yumaloqlash
+		stats.totalHours = Number(stats.totalHours.toFixed(1))
 
 		return {
 			filteredEntries: paginatedEntries,
@@ -432,635 +467,662 @@ export default function DashboardPage() {
 
 	return (
 		<main className='min-h-screen p-2 sm:p-4 bg-[#0A0F1C]'>
-			<Dialog open={showBetaModal} onOpenChange={setShowBetaModal}>
-				<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
-					<DialogHeader>
-						<div className='flex items-center gap-3 mb-2'>
-							<div className='h-10 w-10 bg-[#4E7BEE]/10 rounded-full flex items-center justify-center'>
-								<Sparkles className='h-5 w-5 text-[#4E7BEE]' />
+			<div
+				className={`${
+					logoutLoading ? 'opacity-60 pointer-events-none' : ''
+				} transition-all duration-300`}
+			>
+				<Dialog open={showBetaModal} onOpenChange={setShowBetaModal}>
+					<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
+						<DialogHeader>
+							<div className='flex items-center gap-3 mb-2'>
+								<div className='h-10 w-10 bg-[#4E7BEE]/10 rounded-full flex items-center justify-center'>
+									<Sparkles className='h-5 w-5 text-[#4E7BEE]' />
+								</div>
+								<div>
+									<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
+										Beta Version
+										<span className='px-1.5 py-0.5 rounded-full bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs'>
+											v0.1.0
+										</span>
+									</DialogTitle>
+								</div>
 							</div>
+							<DialogDescription className='text-gray-400'>
+								This app is currently in Beta (test) mode. Please write your
+								times in your notes. After the beta version, you can use it
+								normally.
+							</DialogDescription>
+						</DialogHeader>
+						<div className='mt-4 flex justify-end'>
+							<Button
+								onClick={() => setShowBetaModal(false)}
+								className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
+							>
+								I Understand
+							</Button>
+						</div>
+					</DialogContent>
+				</Dialog>
+				<Toaster richColors position='top-right' theme='dark' />
+				<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
+					{/* Header */}
+					<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
+						<div className='flex items-center gap-4'>
+							<Image
+								src='/cropped-kinglogo.avif'
+								alt='King Kebab Logo'
+								className='w-12 h-12 object-contain'
+								width={100}
+								height={100}
+							/>
 							<div>
-								<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
-									Beta Version
-									<span className='px-1.5 py-0.5 rounded-full bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs'>
-										v0.1.0
-									</span>
-								</DialogTitle>
+								<h1 className='text-lg sm:text-2xl font-bold text-white'>
+									Dashboard
+								</h1>
+								{userData && (
+									<div className='flex items-center gap-2'>
+										<p className='text-sm sm:text-base text-gray-400'>
+											{userData.username}
+										</p>
+										<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20'>
+											ID: {userData.employeeId || 'N/A'}
+										</span>
+										<span className='text-sm sm:text-base text-gray-400'>
+											- {userData.position === 'worker' ? 'Worker' : 'Rider'}
+										</span>
+									</div>
+								)}
 							</div>
 						</div>
-						<DialogDescription className='text-gray-400'>
-							This app is currently in Beta (test) mode. Please write your times
-							in your notes. After the beta version, you can use it normally.
-						</DialogDescription>
-					</DialogHeader>
-					<div className='mt-4 flex justify-end'>
-						<Button
-							onClick={() => setShowBetaModal(false)}
-							className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
-						>
-							I Understand
-						</Button>
+
+						<div className='flex gap-2 w-full sm:w-auto'>
+							<Button
+								onClick={() => router.push('/dashboard/profile')}
+								variant='outline'
+								className='flex-1 sm:flex-none bg-transparent border-[#4CC4C0]/20 text-[#4CC4C0] hover:bg-[#4CC4C0]/10 text-sm'
+								disabled={logoutLoading}
+							>
+								<User size={16} className='mr-1' />
+								Profile
+							</Button>
+							<Button
+								onClick={handleLogout}
+								className='flex-1 sm:flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer'
+								disabled={logoutLoading}
+							>
+								{logoutLoading ? (
+									<>
+										<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2'></div>
+										Logging out...
+									</>
+								) : (
+									<>
+										<span className='ml-1'>Logout</span>
+										<LogOut size={16} />
+									</>
+								)}
+							</Button>
+						</div>
 					</div>
-				</DialogContent>
-			</Dialog>
-			<Toaster richColors position='top-right' theme='dark' />
-			<div className='max-w-4xl mx-auto space-y-3 sm:space-y-6'>
-				{/* Header */}
-				<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg'>
-					<div className='flex items-center gap-4'>
-						<Image
-							src='/cropped-kinglogo.avif'
-							alt='King Kebab Logo'
-							className='w-12 h-12 object-contain'
-							width={100}
-							height={100}
-						/>
-						<div>
-							<h1 className='text-lg sm:text-2xl font-bold text-white'>
-								Dashboard
-							</h1>
-							{userData && (
-								<div className='flex items-center gap-2'>
-									<p className='text-sm sm:text-base text-gray-400'>
-										{userData.username}
+
+					{/* E'lonlar Banner */}
+					<Card className='bg-[#0E1422] border-none text-white overflow-hidden'>
+						<div className='relative bg-gradient-to-r from-[#4E7BEE]/20 to-[#4CC4C0]/20 p-4 sm:p-6'>
+							{/* Bezak elementlari */}
+							<div className='absolute top-0 right-0 w-32 h-32 bg-[#4E7BEE]/10 rounded-full -translate-y-1/2 translate-x-1/2'></div>
+							<div className='absolute bottom-0 left-0 w-24 h-24 bg-[#4CC4C0]/10 rounded-full translate-y-1/2 -translate-x-1/2'></div>
+
+							{/* Asosiy kontent */}
+							<div className='relative'>
+								<div className='flex items-center gap-2 mb-4'>
+									<div className=' rounded-lg'>
+										<Image src='/bell.png' alt='Bell' width={40} height={40} />
+									</div>
+									<h2 className='text-lg sm:text-2xl font-bold text-white'>
+										Important Announcements
+									</h2>
+								</div>
+
+								<div className='space-y-3'>
+									<div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4E7BEE]/20 hover:border-[#4E7BEE]/40 transition-all duration-300'>
+										<div className='flex items-center gap-2 mb-2'>
+											<div className='bg-[#4E7BEE]/10 p-1.5 rounded'>
+												<FileText className='w-4 h-4 text-[#4E7BEE]' />
+											</div>
+											<p className='text-sm sm:text-base font-medium text-[#4E7BEE]'>
+												New Work Time Tracking System
+											</p>
+										</div>
+										<div className='relative'>
+											<p
+												className={`text-xs sm:text-sm text-gray-400 mt-1 ${
+													!expandedAnnouncements['system'] ? 'line-clamp-3' : ''
+												}`}
+											>
+												Dear, King Kebab Family, We are excited to announce the
+												launch of our new Work Time Tracking System, designed to
+												improve efficiency and accuracy in tracking working
+												hours. Starting from new month, all team members will
+												begin using the system, and we appreciate your
+												cooperation in making this transition smooth.
+											</p>
+											{!expandedAnnouncements['system'] && (
+												<button
+													onClick={() => toggleAnnouncement('system')}
+													className='text-[#4E7BEE] text-xs hover:underline mt-1'
+												>
+													Read More
+												</button>
+											)}
+											{expandedAnnouncements['system'] && (
+												<button
+													onClick={() => toggleAnnouncement('system')}
+													className='text-[#4E7BEE] text-xs hover:underline mt-1'
+												>
+													Show Less
+												</button>
+											)}
+										</div>
+									</div>
+
+									{/* <div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4CC4C0]/20 hover:border-[#4CC4C0]/40 transition-all duration-300'>
+										<div className='flex items-center gap-2 mb-2'>
+											<div className='bg-[#4CC4C0]/10 p-1.5 rounded'>
+												<AlertTriangle className='w-4 h-4 text-[#4CC4C0]' />
+											</div>
+											<p className='text-sm sm:text-base font-medium text-[#4CC4C0]'>
+												Kitchen Rules
+											</p>
+										</div>
+										<div className='relative'>
+											<p
+												className={`text-xs sm:text-sm text-gray-400 mt-1 ${
+													!expandedAnnouncements['salary'] ? 'line-clamp-3' : ''
+												}`}
+											>
+												Hello King Kebab Family, please ensure we use fewer sauces
+												for the kebabs, pay close attention to kebab quality, and
+												maintain a clean kitchen at all times. Thank you for your
+												continued dedication !
+											</p>
+											{!expandedAnnouncements['salary'] && (
+												<button
+													onClick={() => toggleAnnouncement('salary')}
+													className='text-[#4CC4C0] text-xs hover:underline mt-1'
+												>
+													Read More
+												</button>
+											)}
+											{expandedAnnouncements['salary'] && (
+												<button
+													onClick={() => toggleAnnouncement('salary')}
+													className='text-[#4CC4C0] text-xs hover:underline mt-1'
+												>
+													Show Less
+												</button>
+											)}
+										</div>
+									</div> */}
+								</div>
+							</div>
+						</div>
+					</Card>
+
+					{/* Statistika */}
+					<div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+						<Card className='bg-[#0E1422] border-none text-white p-4'>
+							<div className='flex items-center gap-3'>
+								<div className='bg-[#4E7BEE]/10 p-3 rounded-lg'>
+									<Timer className='w-6 h-6 text-[#4E7BEE]' />
+								</div>
+								<div>
+									<p className='text-gray-400 text-sm'>Total Hours</p>
+									<p className='text-xl font-semibold text-[#4E7BEE]'>
+										{stats.totalHours.toFixed(1)}h
 									</p>
-									<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20'>
-										ID: {userData.employeeId || 'N/A'}
-									</span>
-									<span className='text-sm sm:text-base text-gray-400'>
-										- {userData.position === 'worker' ? 'Worker' : 'Rider'}
-									</span>
 								</div>
-							)}
-						</div>
+							</div>
+						</Card>
+
+						<Card className='bg-[#0E1422] border-none text-white p-4'>
+							<div className='flex items-center gap-3'>
+								<div className='bg-[#4CC4C0]/10 p-3 rounded-lg'>
+									<CheckCircle2 className='w-6 h-6 text-[#4CC4C0]' />
+								</div>
+								<div>
+									<p className='text-gray-400 text-sm'>Regular Days</p>
+									<p className='text-xl font-semibold text-[#4CC4C0]'>
+										{stats.regularDays}d
+									</p>
+								</div>
+							</div>
+						</Card>
+
+						<Card className='bg-[#0E1422] border-none text-white p-4'>
+							<div className='flex items-center gap-3'>
+								<div className='bg-[#FF3B6F]/10 p-3 rounded-lg'>
+									<AlertTriangle className='w-6 h-6 text-[#FF3B6F]' />
+								</div>
+								<div>
+									<p className='text-gray-400 text-sm'>Overtime Days</p>
+									<p className='text-xl font-semibold text-[#FF3B6F]'>
+										{stats.overtimeDays}d
+									</p>
+								</div>
+							</div>
+						</Card>
 					</div>
 
-					<div className='flex gap-2 w-full sm:w-auto'>
-						<Button
-							onClick={() => router.push('/dashboard/profile')}
-							variant='outline'
-							className='flex-1 sm:flex-none bg-transparent border-[#4CC4C0]/20 text-[#4CC4C0] hover:bg-[#4CC4C0]/10 text-sm'
-						>
-							<User size={16} className='mr-1' />
-							Profile
-						</Button>
-						<Button
-							onClick={handleLogout}
-							className='flex-1 sm:flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer'
-						>
-							{isLoading ? (
-								<span className='ml-1'>Logging out...</span>
-							) : (
-								<>
-									<span className='ml-1'>Logout</span>
-									<LogOut size={16} />
-								</>
-							)}
-						</Button>
-					</div>
-				</div>
-
-				{/* E'lonlar Banner */}
-				<Card className='bg-[#0E1422] border-none text-white overflow-hidden'>
-					<div className='relative bg-gradient-to-r from-[#4E7BEE]/20 to-[#4CC4C0]/20 p-4 sm:p-6'>
-						{/* Bezak elementlari */}
-						<div className='absolute top-0 right-0 w-32 h-32 bg-[#4E7BEE]/10 rounded-full -translate-y-1/2 translate-x-1/2'></div>
-						<div className='absolute bottom-0 left-0 w-24 h-24 bg-[#4CC4C0]/10 rounded-full translate-y-1/2 -translate-x-1/2'></div>
-
-						{/* Asosiy kontent */}
-						<div className='relative'>
-							<div className='flex items-center gap-2 mb-4'>
-								<div className=' rounded-lg'>
-									<Image src='/bell.png' alt='Bell' width={40} height={40} />
-								</div>
-								<h2 className='text-lg sm:text-2xl font-bold text-white'>
-									Important Announcements
-								</h2>
-							</div>
-
-							<div className='space-y-3'>
-								<div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4E7BEE]/20 hover:border-[#4E7BEE]/40 transition-all duration-300'>
-									<div className='flex items-center gap-2 mb-2'>
-										<div className='bg-[#4E7BEE]/10 p-1.5 rounded'>
-											<FileText className='w-4 h-4 text-[#4E7BEE]' />
-										</div>
-										<p className='text-sm sm:text-base font-medium text-[#4E7BEE]'>
-											New Work Time Tracking System
-										</p>
-									</div>
-									<div className='relative'>
-										<p
-											className={`text-xs sm:text-sm text-gray-400 mt-1 ${
-												!expandedAnnouncements['system'] ? 'line-clamp-3' : ''
-											}`}
-										>
-											Dear, King Kebab Family, We are excited to announce the
-											launch of our new Work Time Tracking System, designed to
-											improve efficiency and accuracy in tracking working hours.
-											Starting from new month, all team members will begin using
-											the system, and we appreciate your cooperation in making
-											this transition smooth.
-										</p>
-										{!expandedAnnouncements['system'] && (
-											<button
-												onClick={() => toggleAnnouncement('system')}
-												className='text-[#4E7BEE] text-xs hover:underline mt-1'
-											>
-												Read More
-											</button>
-										)}
-										{expandedAnnouncements['system'] && (
-											<button
-												onClick={() => toggleAnnouncement('system')}
-												className='text-[#4E7BEE] text-xs hover:underline mt-1'
-											>
-												Show Less
-											</button>
-										)}
-									</div>
-								</div>
-
-								{/* <div className='bg-[#1A1F2E] p-3 sm:p-4 rounded-lg border border-[#4CC4C0]/20 hover:border-[#4CC4C0]/40 transition-all duration-300'>
-									<div className='flex items-center gap-2 mb-2'>
-										<div className='bg-[#4CC4C0]/10 p-1.5 rounded'>
-											<AlertTriangle className='w-4 h-4 text-[#4CC4C0]' />
-										</div>
-										<p className='text-sm sm:text-base font-medium text-[#4CC4C0]'>
-											Kitchen Rules
-										</p>
-									</div>
-									<div className='relative'>
-										<p
-											className={`text-xs sm:text-sm text-gray-400 mt-1 ${
-												!expandedAnnouncements['salary'] ? 'line-clamp-3' : ''
-											}`}
-										>
-											Hello King Kebab Family, please ensure we use fewer sauces
-											for the kebabs, pay close attention to kebab quality, and
-											maintain a clean kitchen at all times. Thank you for your
-											continued dedication !
-										</p>
-										{!expandedAnnouncements['salary'] && (
-											<button
-												onClick={() => toggleAnnouncement('salary')}
-												className='text-[#4CC4C0] text-xs hover:underline mt-1'
-											>
-												Read More
-											</button>
-										)}
-										{expandedAnnouncements['salary'] && (
-											<button
-												onClick={() => toggleAnnouncement('salary')}
-												className='text-[#4CC4C0] text-xs hover:underline mt-1'
-											>
-												Show Less
-											</button>
-										)}
-									</div>
-								</div> */}
-							</div>
-						</div>
-					</div>
-				</Card>
-
-				{/* Statistika */}
-				<div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
-					<Card className='bg-[#0E1422] border-none text-white p-4'>
-						<div className='flex items-center gap-3'>
-							<div className='bg-[#4E7BEE]/10 p-3 rounded-lg'>
-								<Timer className='w-6 h-6 text-[#4E7BEE]' />
-							</div>
-							<div>
-								<p className='text-gray-400 text-sm'>Total Hours</p>
-								<p className='text-xl font-semibold text-[#4E7BEE]'>
-									{stats.totalHours.toFixed(1)}h
-								</p>
-							</div>
-						</div>
-					</Card>
-
-					<Card className='bg-[#0E1422] border-none text-white p-4'>
-						<div className='flex items-center gap-3'>
-							<div className='bg-[#4CC4C0]/10 p-3 rounded-lg'>
-								<CheckCircle2 className='w-6 h-6 text-[#4CC4C0]' />
-							</div>
-							<div>
-								<p className='text-gray-400 text-sm'>Regular Days</p>
-								<p className='text-xl font-semibold text-[#4CC4C0]'>
-									{stats.regularDays}d
-								</p>
-							</div>
-						</div>
-					</Card>
-
-					<Card className='bg-[#0E1422] border-none text-white p-4'>
-						<div className='flex items-center gap-3'>
-							<div className='bg-[#FF3B6F]/10 p-3 rounded-lg'>
-								<AlertTriangle className='w-6 h-6 text-[#FF3B6F]' />
-							</div>
-							<div>
-								<p className='text-gray-400 text-sm'>Overtime Days</p>
-								<p className='text-xl font-semibold text-[#FF3B6F]'>
-									{stats.overtimeDays}d
-								</p>
-							</div>
-						</div>
-					</Card>
-				</div>
-
-				{/* Vaqt kiritish formasi */}
-				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-4 sm:p-6'>
-						<h2 className='text-base sm:text-xl mb-4 flex items-center gap-2'>
-							<FileText className='w-5 h-5 text-[#4E7BEE]' />
-							Add New Time Entry
-						</h2>
-						<form onSubmit={handleSubmit} className='space-y-4'>
-							<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-								<div className='space-y-2'>
-									<Label className='text-sm flex items-center gap-1.5'>
-										<Calendar className='w-4 h-4 text-gray-400' />
-										Date
-									</Label>
-									<Input
-										type='date'
-										value={selectedDate.toISOString().split('T')[0]}
-										onChange={e => setSelectedDate(new Date(e.target.value))}
-										required
-										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
-									/>
-								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm flex items-center gap-1.5'>
-										<Clock className='w-4 h-4 text-gray-400' />
-										Start Time
-									</Label>
-									<TimePicker
-										value={formData.startTime}
-										onChange={time =>
-											setFormData({ ...formData, startTime: time })
-										}
-									/>
-								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm flex items-center gap-1.5'>
-										<Clock className='w-4 h-4 text-gray-400' />
-										End Time
-									</Label>
-									<TimePicker
-										value={formData.endTime}
-										onChange={time =>
-											setFormData({ ...formData, endTime: time })
-										}
-									/>
-								</div>
-							</div>
-
-							{/* Ish vaqtidan tashqari ishlash sababi */}
-							{isOvertime && (
-								<div className='space-y-4'>
-									<div className='space-y-2'>
-										<Label className='text-sm flex items-center gap-1.5'>
-											<AlertTriangle className='w-4 h-4 text-yellow-500' />
-											Overtime Reason
-										</Label>
-										<select
-											value={formData.overtimeReason || ''}
-											onChange={e =>
-												setFormData({
-													...formData,
-													overtimeReason: e.target
-														.value as TimeEntry['overtimeReason'],
-													responsiblePerson:
-														e.target.value === 'Company Request'
-															? formData.responsiblePerson
-															: '',
-												})
-											}
-											className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
-											required
-										>
-											<option value=''>Select reason</option>
-											<option value='Busy'>Busy</option>
-											<option value='Last Order'>Last Order</option>
-											<option value='Company Request'>Company Request</option>
-										</select>
-									</div>
-
-									{formData.overtimeReason === 'Company Request' && (
+					{/* Vaqt kiritish formasi */}
+					<Card className='bg-[#0E1422] border-none text-white'>
+						<div className='p-4 sm:p-6'>
+							<h2 className='text-base sm:text-xl mb-4 flex items-center gap-2'>
+								<FileText className='w-5 h-5 text-[#4E7BEE]' />
+								Add New Time Entry
+							</h2>
+							<form onSubmit={handleSubmit} className='space-y-4'>
+								<fieldset disabled={logoutLoading} className='space-y-4'>
+									<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 										<div className='space-y-2'>
 											<Label className='text-sm flex items-center gap-1.5'>
-												<User className='w-4 h-4 text-gray-400' />
-												Responsible Person
+												<Calendar className='w-4 h-4 text-gray-400' />
+												Date
 											</Label>
-											<select
-												value={formData.responsiblePerson || ''}
+											<Input
+												type='date'
+												value={selectedDate.toISOString().split('T')[0]}
 												onChange={e =>
-													setFormData({
-														...formData,
-														responsiblePerson: e.target
-															.value as TimeEntry['responsiblePerson'],
-													})
+													setSelectedDate(new Date(e.target.value))
 												}
-												className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
 												required
-											>
-												<option value=''>Select person</option>
-												<option value='Adilcan'>Adilcan</option>
-												<option value='Boss'>Boss</option>
-											</select>
+												className='bg-[#1A1F2E] border-none text-white text-sm h-10'
+											/>
+										</div>
+										<div className='space-y-2'>
+											<Label className='text-sm flex items-center gap-1.5'>
+												<Clock className='w-4 h-4 text-gray-400' />
+												Start Time
+											</Label>
+											<TimePicker
+												value={formData.startTime}
+												onChange={time =>
+													setFormData({ ...formData, startTime: time })
+												}
+											/>
+										</div>
+										<div className='space-y-2'>
+											<Label className='text-sm flex items-center gap-1.5'>
+												<Clock className='w-4 h-4 text-gray-400' />
+												End Time
+											</Label>
+											<TimePicker
+												value={formData.endTime}
+												onChange={time =>
+													setFormData({ ...formData, endTime: time })
+												}
+											/>
+										</div>
+									</div>
+
+									{/* Ish vaqtidan tashqari ishlash sababi */}
+									{isOvertime && (
+										<div className='space-y-4'>
+											<div className='space-y-2'>
+												<Label className='text-sm flex items-center gap-1.5'>
+													<AlertTriangle className='w-4 h-4 text-yellow-500' />
+													Overtime Reason
+												</Label>
+												<select
+													value={formData.overtimeReason || ''}
+													onChange={e =>
+														setFormData({
+															...formData,
+															overtimeReason: e.target
+																.value as TimeEntry['overtimeReason'],
+															responsiblePerson:
+																e.target.value === 'Company Request'
+																	? formData.responsiblePerson
+																	: '',
+														})
+													}
+													className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
+													required
+												>
+													<option value=''>Select reason</option>
+													<option value='Busy'>Busy</option>
+													<option value='Last Order'>Last Order</option>
+													<option value='Company Request'>
+														Company Request
+													</option>
+												</select>
+											</div>
+
+											{formData.overtimeReason === 'Company Request' && (
+												<div className='space-y-2'>
+													<Label className='text-sm flex items-center gap-1.5'>
+														<User className='w-4 h-4 text-gray-400' />
+														Responsible Person
+													</Label>
+													<select
+														value={formData.responsiblePerson || ''}
+														onChange={e =>
+															setFormData({
+																...formData,
+																responsiblePerson: e.target
+																	.value as TimeEntry['responsiblePerson'],
+															})
+														}
+														className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
+														required
+													>
+														<option value=''>Select person</option>
+														<option value='Adilcan'>Adilcan</option>
+														<option value='Boss'>Boss</option>
+													</select>
+												</div>
+											)}
 										</div>
 									)}
-								</div>
-							)}
 
-							{/* Submit tugmasi */}
-							<div className='flex justify-end gap-2'>
-								<Button
-									type='submit'
-									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white gap-2'
-									disabled={loading}
-								>
-									{loading ? (
-										<>
-											<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white'></div>
-											Saving...
-										</>
-									) : (
-										<>
-											<CheckCircle2 className='w-4 h-4' />
-											Add Entry
-										</>
-									)}
-								</Button>
-							</div>
-						</form>
-					</div>
-				</Card>
-
-				{/* Vaqt yozuvlari ro'yxati */}
-
-				<Card className='bg-[#0E1422] border-none text-white'>
-					<div className='p-4 sm:p-6'>
-						<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6'>
-							<h2 className='text-base sm:text-xl flex items-center gap-2'>
-								<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
-								My Time Entries
-							</h2>
-							<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
-								<div className='flex items-center gap-2 w-full sm:w-auto'>
-									<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
-										<Calendar className='w-4 h-4 text-gray-400' />
-										Month:
-									</Label>
-									<select
-										value={selectedMonth}
-										onChange={e => {
-											setSelectedMonth(parseInt(e.target.value))
-											setCurrentPage(1)
-										}}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
-									>
-										{months.map(month => (
-											<option key={month.value} value={month.value}>
-												{month.label}
-											</option>
-										))}
-									</select>
-								</div>
-								<div className='flex items-center gap-2 w-full sm:w-auto'>
-									<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
-										<Calendar className='w-4 h-4 text-gray-400' />
-										Year:
-									</Label>
-									<select
-										value={selectedYear}
-										onChange={e => {
-											setSelectedYear(parseInt(e.target.value))
-											setCurrentPage(1)
-										}}
-										className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
-									>
-										{[2023, 2024, 2025].map(year => (
-											<option key={year} value={year}>
-												{year}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
+									{/* Submit tugmasi */}
+									<div className='flex justify-end gap-2'>
+										<Button
+											type='submit'
+											className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white gap-2'
+											disabled={loading || logoutLoading}
+										>
+											{loading ? (
+												<>
+													<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white'></div>
+													Saving...
+												</>
+											) : (
+												<>
+													<CheckCircle2 className='w-4 h-4' />
+													Add Entry
+												</>
+											)}
+										</Button>
+									</div>
+								</fieldset>
+							</form>
 						</div>
+					</Card>
 
-						{/* Time entries list */}
-						<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2 mb-4'>
-							{loading ? (
-								<p className='text-center text-gray-400 text-sm'>Loading...</p>
-							) : error ? (
-								<p className='text-center text-red-500 text-sm'>{error}</p>
-							) : filteredEntries.length === 0 ? (
-								<div className='text-center text-gray-400 text-sm py-8'>
-									<XCircle className='w-12 h-12 mx-auto mb-3 opacity-50' />
-									<p>No time entries for this month</p>
+					{/* Vaqt yozuvlari ro'yxati */}
+
+					<Card className='bg-[#0E1422] border-none text-white'>
+						<div className='p-4 sm:p-6'>
+							<div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6'>
+								<h2 className='text-base sm:text-xl flex items-center gap-2'>
+									<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
+									My Time Entries
+								</h2>
+								<div className='flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto'>
+									<div className='flex items-center gap-2 w-full sm:w-auto'>
+										<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
+											<Calendar className='w-4 h-4 text-gray-400' />
+											Month:
+										</Label>
+										<select
+											value={selectedMonth}
+											onChange={e => {
+												setSelectedMonth(parseInt(e.target.value))
+												setCurrentPage(1)
+											}}
+											className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
+											disabled={logoutLoading}
+										>
+											{months.map(month => (
+												<option key={month.value} value={month.value}>
+													{month.label}
+												</option>
+											))}
+										</select>
+									</div>
+									<div className='flex items-center gap-2 w-full sm:w-auto'>
+										<Label className='text-sm min-w-[50px] flex items-center gap-1.5'>
+											<Calendar className='w-4 h-4 text-gray-400' />
+											Year:
+										</Label>
+										<select
+											value={selectedYear}
+											onChange={e => {
+												setSelectedYear(parseInt(e.target.value))
+												setCurrentPage(1)
+											}}
+											className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
+											disabled={logoutLoading}
+										>
+											{[2023, 2024, 2025].map(year => (
+												<option key={year} value={year}>
+													{year}
+												</option>
+											))}
+										</select>
+									</div>
 								</div>
-							) : (
-								<div className='space-y-4'>
-									{filteredEntries.map(entry => {
-										const isOvertime = entry.hours > 12
-										return (
-											<div
-												key={entry._id}
-												className={`bg-gradient-to-r ${
-													isOvertime
-														? 'from-[#1A1F2E] to-yellow-950/10 border-l-4 border-l-yellow-500'
-														: 'from-[#1A1F2E] to-[#1A1F2E] border-l-4 border-l-emerald-500'
-												} rounded-lg transition-all duration-300 hover:shadow-lg`}
-											>
-												<div className='p-5'>
-													{/* Yuqori qism: Sana, Status va Amallar */}
-													<div className='flex items-center justify-between mb-4'>
-														<div className='flex items-center gap-3'>
-															<div className='bg-[#4E7BEE]/10 p-2.5 rounded-lg'>
-																<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
-															</div>
-															<div>
-																<p className='text-sm text-gray-400'>Date</p>
-																<p className='font-medium'>
-																	{new Date(entry.date).toLocaleDateString(
-																		'en-US',
-																		{
-																			weekday: 'short',
-																			month: 'short',
-																			day: 'numeric',
-																		}
-																	)}
-																</p>
-															</div>
-														</div>
-														<div className='flex items-center gap-3'>
-															<div
-																className={`px-3 py-1.5 rounded-full ${
-																	isOvertime
-																		? 'bg-yellow-500/10'
-																		: 'bg-emerald-500/10'
-																}`}
-															>
-																<p
-																	className={`text-sm font-medium ${
-																		isOvertime
-																			? 'text-yellow-500'
-																			: 'text-emerald-500'
-																	}`}
-																>
-																	{isOvertime ? 'Overtime' : 'Regular'}
-																</p>
-															</div>
-															<div className='flex gap-1'>
-																<Button
-																	variant='ghost'
-																	onClick={() => handleEditEntry(entry)}
-																	disabled={
-																		Math.ceil(
-																			Math.abs(
-																				new Date().getTime() -
-																					new Date(entry.date).getTime()
-																			) /
-																				(1000 * 60 * 60 * 24)
-																		) > 2
-																	}
-																	className={`hover:bg-[#2A3447] h-8 w-8 ${
-																		Math.ceil(
-																			Math.abs(
-																				new Date().getTime() -
-																					new Date(entry.date).getTime()
-																			) /
-																				(1000 * 60 * 60 * 24)
-																		) > 2
-																			? 'text-gray-500 cursor-not-allowed'
-																			: 'text-[#4E7BEE] hover:text-[#4E7BEE]/80'
-																	}`}
-																>
-																	<Pencil className='w-4 h-4' />
-																</Button>
-																<Button
-																	variant='ghost'
-																	onClick={() => handleDelete(entry._id)}
-																	className='hover:bg-[#2A3447] text-red-500 hover:text-red-600 h-8 w-8'
-																>
-																	<Trash2 className='w-4 h-4' />
-																</Button>
-															</div>
-														</div>
-													</div>
+							</div>
 
-													{/* Asosiy ma'lumotlar */}
-													<div className='space-y-4'>
-														{/* Ish vaqti */}
-														<div className='flex items-center gap-4 bg-[#0E1422] p-4 rounded-lg'>
-															<div className='bg-[#4CC4C0]/10 p-2.5 rounded-lg'>
-																<Clock className='w-5 h-5 text-[#4CC4C0]' />
-															</div>
-															<div className='flex-1'>
-																<p className='text-sm text-gray-400'>
-																	Working Hours
-																</p>
-																<div className='flex items-center justify-between'>
-																	<p className='font-medium text-[#4CC4C0]'>
-																		{formatTime(entry.startTime)} -{' '}
-																		{formatTime(entry.endTime)}
-																	</p>
-																	<p className='text-[#4E7BEE] font-medium'>
-																		{entry.hours.toFixed(1)} hours
-																	</p>
+							{/* Time entries list */}
+							<div className='h-[400px] overflow-y-auto custom-scrollbar pr-2 mb-4'>
+								{loading ? (
+									<p className='text-center text-gray-400 text-sm'>
+										Loading...
+									</p>
+								) : error ? (
+									<p className='text-center text-red-500 text-sm'>{error}</p>
+								) : filteredEntries.length === 0 ? (
+									<div className='text-center text-gray-400 text-sm py-8'>
+										<XCircle className='w-12 h-12 mx-auto mb-3 opacity-50' />
+										<p>No time entries for this month</p>
+									</div>
+								) : (
+									<div className='space-y-4'>
+										{filteredEntries.map(entry => {
+											const isOvertime = entry.hours > 12
+											return (
+												<div
+													key={entry._id}
+													className={`bg-gradient-to-r ${
+														isOvertime
+															? 'from-[#1A1F2E] to-yellow-950/10 border-l-4 border-l-yellow-500'
+															: 'from-[#1A1F2E] to-[#1A1F2E] border-l-4 border-l-emerald-500'
+													} rounded-lg transition-all duration-300 hover:shadow-lg`}
+												>
+													<div className='p-5'>
+														{/* Yuqori qism: Sana, Status va Amallar */}
+														<div className='flex items-center justify-between mb-4'>
+															<div className='flex items-center gap-3'>
+																<div className='bg-[#4E7BEE]/10 p-2.5 rounded-lg'>
+																	<CalendarDays className='w-5 h-5 text-[#4E7BEE]' />
 																</div>
-															</div>
-														</div>
-
-														{/* Overtime ma'lumotlari */}
-														{isOvertime && entry.overtimeReason && (
-															<div className='relative'>
-																<div className='absolute left-4 top-0 bottom-0 w-0.5 bg-yellow-500/20'></div>
-																<div className='space-y-4 pl-8'>
-																	{/* Overtime sababi */}
-																	<div className='flex items-center gap-3'>
-																		<div className='bg-yellow-500/10 p-2.5 rounded-lg'>
-																			<AlertTriangle className='w-5 h-5 text-yellow-500' />
-																		</div>
-																		<div>
-																			<p className='text-sm text-gray-400'>
-																				Overtime Reason
-																			</p>
-																			<p className='font-medium text-yellow-500'>
-																				{entry.overtimeReason}
-																			</p>
-																		</div>
-																	</div>
-
-																	{/* Mas'ul shaxs */}
-																	{entry.overtimeReason === 'Company Request' &&
-																		entry.responsiblePerson && (
-																			<div className='flex items-center gap-3'>
-																				<div className='bg-blue-500/10 p-2.5 rounded-lg'>
-																					<User className='w-5 h-5 text-blue-500' />
-																				</div>
-																				<div>
-																					<p className='text-sm text-gray-400'>
-																						Responsible Person
-																					</p>
-																					<p className='font-medium text-blue-500'>
-																						{entry.responsiblePerson}
-																					</p>
-																				</div>
-																			</div>
+																<div>
+																	<p className='text-sm text-gray-400'>Date</p>
+																	<p className='font-medium'>
+																		{new Date(entry.date).toLocaleDateString(
+																			'en-US',
+																			{
+																				weekday: 'short',
+																				month: 'short',
+																				day: 'numeric',
+																			}
 																		)}
+																	</p>
 																</div>
 															</div>
-														)}
+															<div className='flex items-center gap-3'>
+																<div
+																	className={`px-3 py-1.5 rounded-full ${
+																		isOvertime
+																			? 'bg-yellow-500/10'
+																			: 'bg-emerald-500/10'
+																	}`}
+																>
+																	<p
+																		className={`text-sm font-medium ${
+																			isOvertime
+																				? 'text-yellow-500'
+																				: 'text-emerald-500'
+																		}`}
+																	>
+																		{isOvertime ? 'Overtime' : 'Regular'}
+																	</p>
+																</div>
+																<div className='flex gap-1'>
+																	<Button
+																		variant='ghost'
+																		onClick={() => handleEditEntry(entry)}
+																		disabled={
+																			logoutLoading ||
+																			Math.ceil(
+																				Math.abs(
+																					new Date().getTime() -
+																						new Date(entry.date).getTime()
+																				) /
+																					(1000 * 60 * 60 * 24)
+																			) > 2
+																		}
+																		className={`hover:bg-[#2A3447] h-8 w-8 ${
+																			Math.ceil(
+																				Math.abs(
+																					new Date().getTime() -
+																						new Date(entry.date).getTime()
+																				) /
+																					(1000 * 60 * 60 * 24)
+																			) > 2
+																				? 'text-gray-500 cursor-not-allowed'
+																				: 'text-[#4E7BEE] hover:text-[#4E7BEE]/80'
+																		}`}
+																	>
+																		<Pencil className='w-4 h-4' />
+																	</Button>
+																	<Button
+																		variant='ghost'
+																		onClick={() => handleDelete(entry._id)}
+																		className='hover:bg-[#2A3447] text-red-500 hover:text-red-600 h-8 w-8'
+																		disabled={logoutLoading}
+																	>
+																		<Trash2 className='w-4 h-4' />
+																	</Button>
+																</div>
+															</div>
+														</div>
+
+														{/* Asosiy ma'lumotlar */}
+														<div className='space-y-4'>
+															{/* Ish vaqti */}
+															<div className='flex items-center gap-4 bg-[#0E1422] p-4 rounded-lg'>
+																<div className='bg-[#4CC4C0]/10 p-2.5 rounded-lg'>
+																	<Clock className='w-5 h-5 text-[#4CC4C0]' />
+																</div>
+																<div className='flex-1'>
+																	<p className='text-sm text-gray-400'>
+																		Working Hours
+																	</p>
+																	<div className='flex items-center justify-between'>
+																		<p className='font-medium text-[#4CC4C0]'>
+																			{formatTime(entry.startTime)} -{' '}
+																			{formatTime(entry.endTime)}
+																		</p>
+																		<p className='text-[#4E7BEE] font-medium'>
+																			{entry.hours.toFixed(1)} hours
+																		</p>
+																	</div>
+																</div>
+															</div>
+
+															{/* Overtime ma'lumotlari */}
+															{isOvertime && entry.overtimeReason && (
+																<div className='relative'>
+																	<div className='absolute left-4 top-0 bottom-0 w-0.5 bg-yellow-500/20'></div>
+																	<div className='space-y-4 pl-8'>
+																		{/* Overtime sababi */}
+																		<div className='flex items-center gap-3'>
+																			<div className='bg-yellow-500/10 p-2.5 rounded-lg'>
+																				<AlertTriangle className='w-5 h-5 text-yellow-500' />
+																			</div>
+																			<div>
+																				<p className='text-sm text-gray-400'>
+																					Overtime Reason
+																				</p>
+																				<p className='font-medium text-yellow-500'>
+																					{entry.overtimeReason}
+																				</p>
+																			</div>
+																		</div>
+
+																		{/* Mas'ul shaxs */}
+																		{entry.overtimeReason ===
+																			'Company Request' &&
+																			entry.responsiblePerson && (
+																				<div className='flex items-center gap-3'>
+																					<div className='bg-blue-500/10 p-2.5 rounded-lg'>
+																						<User className='w-5 h-5 text-blue-500' />
+																					</div>
+																					<div>
+																						<p className='text-sm text-gray-400'>
+																							Responsible Person
+																						</p>
+																						<p className='font-medium text-blue-500'>
+																							{entry.responsiblePerson}
+																						</p>
+																					</div>
+																				</div>
+																			)}
+																	</div>
+																</div>
+															)}
+														</div>
 													</div>
 												</div>
-											</div>
-										)
-									})}
+											)
+										})}
+									</div>
+								)}
+							</div>
+
+							{/* Pagination */}
+							{totalPages > 1 && (
+								<div className='flex items-center justify-center gap-2'>
+									<Button
+										variant='outline'
+										size='sm'
+										onClick={() =>
+											setCurrentPage(prev => Math.max(1, prev - 1))
+										}
+										disabled={currentPage === 1 || logoutLoading}
+										className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
+									>
+										Previous
+									</Button>
+									<span className='text-sm text-gray-400'>
+										Page {currentPage} of {totalPages}
+									</span>
+									<Button
+										variant='outline'
+										size='sm'
+										onClick={() => setCurrentPage(prev => prev + 1)}
+										disabled={currentPage >= totalPages || logoutLoading}
+										className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
+									>
+										Next
+									</Button>
 								</div>
 							)}
 						</div>
+					</Card>
+				</div>
 
-						{/* Pagination */}
-						{totalPages > 1 && (
-							<div className='flex items-center justify-center gap-2'>
-								<Button
-									variant='outline'
-									size='sm'
-									onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-									disabled={currentPage === 1}
-									className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
-								>
-									Previous
-								</Button>
-								<span className='text-sm text-gray-400'>
-									Page {currentPage} of {totalPages}
-								</span>
-								<Button
-									variant='outline'
-									size='sm'
-									onClick={() => setCurrentPage(prev => prev + 1)}
-									disabled={currentPage >= totalPages}
-									className='bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer'
-								>
-									Next
-								</Button>
-							</div>
-						)}
-					</div>
-				</Card>
+				{/* Edit Modal */}
+				<EditTimeEntryModal
+					isOpen={isEditModalOpen}
+					onClose={handleModalClose}
+					entry={editingEntry}
+					onUpdate={handleEntryUpdate}
+				/>
 			</div>
-
-			{/* Edit Modal */}
-			<EditTimeEntryModal
-				isOpen={isEditModalOpen}
-				onClose={handleModalClose}
-				entry={editingEntry}
-				onUpdate={handleEntryUpdate}
-			/>
 		</main>
 	)
 }

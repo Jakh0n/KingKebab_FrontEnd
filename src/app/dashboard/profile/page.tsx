@@ -44,7 +44,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface ProfileStats {
 	totalHours: number
@@ -152,10 +152,11 @@ export default function UserProfile() {
 			const currentMonth = now.getMonth()
 			const currentYear = now.getFullYear()
 
-			const totalHours = timeEntries.reduce(
-				(sum, entry) => sum + entry.hours,
-				0
-			)
+			// Backend bilan mos kelishi uchun to'g'ri yumaloqlash
+			const totalHours = timeEntries.reduce((sum, entry) => {
+				const entryHours = Number(entry.hours.toFixed(1))
+				return sum + entryHours
+			}, 0)
 			const totalDays = timeEntries.length
 			const averageHours = totalDays > 0 ? totalHours / totalDays : 0
 
@@ -166,16 +167,16 @@ export default function UserProfile() {
 					entryDate.getFullYear() === currentYear
 				)
 			})
-			const thisMonthHours = thisMonthEntries.reduce(
-				(sum, entry) => sum + entry.hours,
-				0
-			)
+			const thisMonthHours = thisMonthEntries.reduce((sum, entry) => {
+				const entryHours = Number(entry.hours.toFixed(1))
+				return sum + entryHours
+			}, 0)
 
 			setStats({
-				totalHours: Math.round(totalHours * 100) / 100,
+				totalHours: Number(totalHours.toFixed(1)),
 				totalDays,
-				averageHours: Math.round(averageHours * 100) / 100,
-				thisMonthHours: Math.round(thisMonthHours * 100) / 100,
+				averageHours: Number(averageHours.toFixed(1)),
+				thisMonthHours: Number(thisMonthHours.toFixed(1)),
 			})
 		} catch (error) {
 			console.log('Could not fetch stats:', error)
@@ -407,13 +408,226 @@ export default function UserProfile() {
 
 	if (loading) {
 		return (
-			<div className='min-h-screen bg-gradient-to-br bg-slate-900'>
-				<div className='w-full max-w-6xl mx-auto p-6'>
-					<div className='animate-pulse space-y-6'>
-						<div className='h-64 bg-slate-900/80 rounded-lg'></div>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-							<div className='h-48 bg-slate-900/50 rounded-lg'></div>
-							<div className='h-48 bg-slate-900/50 rounded-lg'></div>
+			<div className='min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900'>
+				<div className='w-full max-w-6xl mx-auto p-4 sm:p-6 space-y-6'>
+					{/* Back Button Skeleton */}
+					<div className='flex items-center justify-start'>
+						<div className='h-10 w-40 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-xl animate-pulse border border-blue-600/30'></div>
+					</div>
+
+					{/* Header Card Skeleton */}
+					<div className='relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-slate-800/95 backdrop-blur-lg rounded-lg'>
+						<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500'></div>
+						<div className='relative z-10 p-6'>
+							<div className='flex flex-col items-center gap-6 md:flex-row md:items-start'>
+								{/* Avatar Skeleton */}
+								<div className='relative'>
+									<div className='w-32 h-32 bg-gradient-to-br from-blue-600/30 via-indigo-600/20 to-purple-600/30 rounded-full animate-pulse border-4 border-blue-600/60'></div>
+									<div className='absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-r from-blue-700/40 to-indigo-700/40 rounded-full animate-pulse'></div>
+								</div>
+
+								{/* User Info Skeleton */}
+								<div className='flex-1 space-y-4 text-center md:text-left'>
+									<div className='space-y-2'>
+										<div className='h-8 w-48 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-lg animate-pulse mx-auto md:mx-0'></div>
+										<div className='h-6 w-32 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-lg animate-pulse mx-auto md:mx-0'></div>
+									</div>
+									<div className='h-16 w-full bg-gradient-to-r from-purple-500/15 to-pink-500/15 rounded-lg animate-pulse'></div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Stats Cards Skeleton */}
+					<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+						{/* Total Hours Card */}
+						<div className='relative border-0 shadow-md bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+							<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500'></div>
+							<div className='p-4 space-y-3'>
+								<div className='flex items-center justify-between'>
+									<div className='h-4 w-20 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+									<div className='w-6 h-6 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-md animate-pulse'></div>
+								</div>
+								<div className='h-8 w-16 bg-gradient-to-r from-blue-500/30 to-indigo-500/30 rounded animate-pulse'></div>
+								<div className='h-3 w-24 bg-gradient-to-r from-blue-300/20 to-indigo-300/20 rounded animate-pulse'></div>
+							</div>
+						</div>
+
+						{/* This Month Card */}
+						<div className='relative border-0 shadow-md bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+							<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500'></div>
+							<div className='p-4 space-y-3'>
+								<div className='flex items-center justify-between'>
+									<div className='h-4 w-20 bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded animate-pulse'></div>
+									<div className='w-6 h-6 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 rounded-md animate-pulse'></div>
+								</div>
+								<div className='h-8 w-16 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 rounded animate-pulse'></div>
+								<div className='h-3 w-24 bg-gradient-to-r from-indigo-300/20 to-purple-300/20 rounded animate-pulse'></div>
+							</div>
+						</div>
+
+						{/* Average Hours Card */}
+						<div className='relative border-0 shadow-md bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+							<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500'></div>
+							<div className='p-4 space-y-3'>
+								<div className='flex items-center justify-between'>
+									<div className='h-4 w-20 bg-gradient-to-r from-purple-400/25 to-pink-400/25 rounded animate-pulse'></div>
+									<div className='w-6 h-6 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-md animate-pulse'></div>
+								</div>
+								<div className='h-8 w-16 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded animate-pulse'></div>
+								<div className='h-3 w-24 bg-gradient-to-r from-purple-300/20 to-pink-300/20 rounded animate-pulse'></div>
+							</div>
+						</div>
+
+						{/* Experience Card */}
+						<div className='relative border-0 shadow-md bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+							<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-red-500'></div>
+							<div className='p-4 space-y-3'>
+								<div className='flex items-center justify-between'>
+									<div className='h-4 w-20 bg-gradient-to-r from-pink-400/25 to-red-400/25 rounded animate-pulse'></div>
+									<div className='w-6 h-6 bg-gradient-to-r from-pink-600/30 to-red-600/30 rounded-md animate-pulse'></div>
+								</div>
+								<div className='h-8 w-16 bg-gradient-to-r from-pink-500/30 to-red-500/30 rounded animate-pulse'></div>
+								<div className='h-3 w-24 bg-gradient-to-r from-pink-300/20 to-red-300/20 rounded animate-pulse'></div>
+							</div>
+						</div>
+					</div>
+
+					{/* Profile Details Skeleton */}
+					<div className='border-0 shadow-2xl bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+						<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500'></div>
+						<div className='p-4 space-y-4'>
+							{/* Header */}
+							<div className='flex items-center gap-3'>
+								<div className='w-8 h-8 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-xl animate-pulse'></div>
+								<div className='h-6 w-32 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+							</div>
+
+							{/* Profile Details */}
+							<div className='space-y-3'>
+								{/* Email */}
+								<div className='flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10'>
+									<div className='w-6 h-6 bg-gradient-to-r from-blue-600/40 to-indigo-600/40 rounded-lg animate-pulse'></div>
+									<div className='flex-1 space-y-2'>
+										<div className='h-3 w-16 bg-gradient-to-r from-blue-300/20 to-indigo-300/20 rounded animate-pulse'></div>
+										<div className='h-4 w-32 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+
+								{/* Phone */}
+								<div className='flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10'>
+									<div className='w-6 h-6 bg-gradient-to-r from-indigo-600/40 to-purple-600/40 rounded-lg animate-pulse'></div>
+									<div className='flex-1 space-y-2'>
+										<div className='h-3 w-16 bg-gradient-to-r from-indigo-300/20 to-purple-300/20 rounded animate-pulse'></div>
+										<div className='h-4 w-32 bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+
+								{/* Joined Date */}
+								<div className='flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10'>
+									<div className='w-6 h-6 bg-gradient-to-r from-purple-600/40 to-pink-600/40 rounded-lg animate-pulse'></div>
+									<div className='flex-1 space-y-2'>
+										<div className='h-3 w-16 bg-gradient-to-r from-purple-300/20 to-pink-300/20 rounded animate-pulse'></div>
+										<div className='h-4 w-32 bg-gradient-to-r from-purple-400/25 to-pink-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+							</div>
+
+							{/* Skills Skeleton */}
+							<div className='space-y-3'>
+								<div className='flex items-center gap-2'>
+									<div className='w-3 h-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded animate-pulse'></div>
+									<div className='h-4 w-16 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+								</div>
+								<div className='flex flex-wrap gap-2'>
+									<div className='h-6 w-20 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full animate-pulse'></div>
+									<div className='h-6 w-24 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-full animate-pulse'></div>
+									<div className='h-6 w-18 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-full animate-pulse'></div>
+								</div>
+							</div>
+
+							{/* Emergency Contact Skeleton */}
+							<div className='p-4 bg-gradient-to-r from-red-600/10 to-pink-600/10 rounded-xl border border-red-600/30'>
+								<div className='space-y-3'>
+									<div className='flex items-center gap-2'>
+										<div className='w-3 h-3 bg-gradient-to-r from-red-400/30 to-pink-400/30 rounded animate-pulse'></div>
+										<div className='h-4 w-32 bg-gradient-to-r from-red-400/25 to-pink-400/25 rounded animate-pulse'></div>
+									</div>
+									<div className='space-y-2'>
+										<div className='flex items-center gap-2'>
+											<div className='w-4 h-4 bg-gradient-to-r from-red-400/30 to-orange-400/30 rounded animate-pulse'></div>
+											<div className='h-4 w-28 bg-gradient-to-r from-red-300/20 to-orange-300/20 rounded animate-pulse'></div>
+										</div>
+										<div className='flex items-center gap-2'>
+											<div className='w-4 h-4 bg-gradient-to-r from-orange-400/30 to-yellow-400/30 rounded animate-pulse'></div>
+											<div className='h-4 w-32 bg-gradient-to-r from-orange-300/20 to-yellow-300/20 rounded animate-pulse'></div>
+										</div>
+										<div className='flex items-center gap-2'>
+											<div className='w-4 h-4 bg-gradient-to-r from-yellow-400/30 to-red-400/30 rounded animate-pulse'></div>
+											<div className='h-4 w-24 bg-gradient-to-r from-yellow-300/20 to-red-300/20 rounded animate-pulse'></div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Work Information Skeleton */}
+					<div className='border-0 shadow-2xl bg-gradient-to-br from-slate-900/95 to-blue-950/95 backdrop-blur-lg rounded-lg overflow-hidden'>
+						<div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500'></div>
+						<div className='p-4 space-y-4'>
+							{/* Header */}
+							<div className='flex items-center gap-3'>
+								<div className='w-8 h-8 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-xl animate-pulse'></div>
+								<div className='h-6 w-36 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+							</div>
+
+							{/* Work Info Cards */}
+							<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+								{/* Username Card */}
+								<div className='p-4 bg-gradient-to-br from-blue-600/10 via-blue-600/5 to-transparent rounded-2xl border border-blue-600/30'>
+									<div className='space-y-3'>
+										<div className='flex items-center justify-between'>
+											<div className='w-10 h-10 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-xl animate-pulse'></div>
+										</div>
+										<div className='h-4 w-20 bg-gradient-to-r from-blue-300/20 to-indigo-300/20 rounded animate-pulse'></div>
+										<div className='h-6 w-24 bg-gradient-to-r from-blue-400/25 to-indigo-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+
+								{/* Employee ID Card */}
+								<div className='p-4 bg-gradient-to-br from-indigo-600/10 via-indigo-600/5 to-transparent rounded-2xl border border-indigo-600/30'>
+									<div className='space-y-3'>
+										<div className='flex items-center justify-between'>
+											<div className='w-10 h-10 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 rounded-xl animate-pulse'></div>
+										</div>
+										<div className='h-4 w-20 bg-gradient-to-r from-indigo-300/20 to-purple-300/20 rounded animate-pulse'></div>
+										<div className='h-6 w-24 bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+
+								{/* Position Card */}
+								<div className='p-4 bg-gradient-to-br from-purple-600/10 via-purple-600/5 to-transparent rounded-2xl border border-purple-600/30'>
+									<div className='space-y-3'>
+										<div className='flex items-center justify-between'>
+											<div className='w-10 h-10 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-xl animate-pulse'></div>
+										</div>
+										<div className='h-4 w-20 bg-gradient-to-r from-purple-300/20 to-pink-300/20 rounded animate-pulse'></div>
+										<div className='h-6 w-24 bg-gradient-to-r from-purple-400/25 to-pink-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+
+								{/* Department Card */}
+								<div className='p-4 bg-gradient-to-br from-pink-600/10 via-pink-600/5 to-transparent rounded-2xl border border-pink-600/30'>
+									<div className='space-y-3'>
+										<div className='flex items-center justify-between'>
+											<div className='w-10 h-10 bg-gradient-to-r from-pink-600/30 to-red-600/30 rounded-xl animate-pulse'></div>
+										</div>
+										<div className='h-4 w-20 bg-gradient-to-r from-pink-300/20 to-red-300/20 rounded animate-pulse'></div>
+										<div className='h-6 w-24 bg-gradient-to-r from-pink-400/25 to-red-400/25 rounded animate-pulse'></div>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

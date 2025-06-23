@@ -57,7 +57,14 @@ export default function AdminPage() {
 		try {
 			setLoading(true)
 			const data = await getAllTimeEntries()
-			setEntries(data)
+
+			// Backend calculation bilan mos kelishi uchun hours ni normalize qilish
+			const normalizedEntries = data.map(entry => ({
+				...entry,
+				hours: Number(entry.hours.toFixed(1)),
+			}))
+
+			setEntries(normalizedEntries)
 		} catch (err) {
 			if (
 				err instanceof Error &&
@@ -80,6 +87,11 @@ export default function AdminPage() {
 
 		loadEntries()
 	}, [router, loadEntries])
+
+	// Oy yoki yil o'zgarganda ma'lumotlarni yangilash
+	useEffect(() => {
+		loadEntries()
+	}, [selectedMonth, selectedYear, loadEntries])
 
 	function handleLogout() {
 		logout()
@@ -137,8 +149,12 @@ export default function AdminPage() {
 						overtimeDays: 0,
 					}
 				}
-				acc[userId].totalHours += entry.hours
-				if (entry.hours <= 12) {
+
+				// Backend bilan mos kelishi uchun to'g'ri yumaloqlash
+				const entryHours = Number(entry.hours.toFixed(1))
+				acc[userId].totalHours += entryHours
+
+				if (entryHours <= 12) {
 					acc[userId].regularDays++
 				} else {
 					acc[userId].overtimeDays++
@@ -159,6 +175,11 @@ export default function AdminPage() {
 			>
 		)
 	}, [filteredEntries])
+
+	// Total hours ni to'g'ri yumaloqlash
+	Object.values(workerStats).forEach(worker => {
+		worker.totalHours = Number(worker.totalHours.toFixed(1))
+	})
 
 	// Tanlangan ishchi ma'lumotlari
 	const selectedWorkerData = useMemo(() => {
