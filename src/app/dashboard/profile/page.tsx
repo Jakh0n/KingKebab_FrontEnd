@@ -21,12 +21,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-	getMyTimeEntries,
-	getUserProfile,
-	updateUserProfile,
-	uploadProfileImage,
-} from '@/lib/api'
+import { getMyTimeEntries, getUserProfile, updateUserProfile } from '@/lib/api'
 import { User } from '@/types'
 import {
 	Activity,
@@ -34,6 +29,7 @@ import {
 	Award,
 	Briefcase,
 	Calendar,
+	Camera,
 	Clock,
 	Mail,
 	MapPin,
@@ -42,11 +38,12 @@ import {
 	Shield,
 	Star,
 	TrendingUp,
+	Upload,
 	User as UserIcon,
 	Users,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 
 interface ProfileStats {
@@ -62,6 +59,7 @@ export default function UserProfile() {
 	const [loading, setLoading] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
 	const [uploading, setUploading] = useState(false)
+	const fileInputRef = useRef<HTMLInputElement>(null)
 	const [stats, setStats] = useState<ProfileStats>({
 		totalHours: 0,
 		totalDays: 0,
@@ -83,6 +81,64 @@ export default function UserProfile() {
 			relationship: '',
 		},
 	})
+
+	// Fallback base64 image upload for when UploadThing is not available
+	const handleFallbackImageUpload = (file: File) => {
+		console.log('Using fallback base64 upload method')
+		setUploading(true)
+
+		const reader = new FileReader()
+		reader.onload = e => {
+			const base64Image = e.target?.result as string
+			console.log('Base64 image created for immediate preview')
+
+			// Update form data with base64 for immediate display
+			setFormData(prev => ({
+				...prev,
+				photoUrl: base64Image,
+			}))
+
+			// Update user state for immediate display
+			setUser(prev =>
+				prev
+					? {
+							...prev,
+							photoUrl: base64Image,
+					  }
+					: null
+			)
+
+			// Save base64 image to localStorage for persistence
+			if (user?._id) {
+				const savedImageKey = `userImage_${user._id}`
+				const userProfileKey = `userProfile_${user._id}`
+				localStorage.setItem(savedImageKey, base64Image)
+
+				const currentProfile = JSON.parse(
+					localStorage.getItem(userProfileKey) || '{}'
+				)
+				localStorage.setItem(
+					userProfileKey,
+					JSON.stringify({
+						...currentProfile,
+						photoUrl: base64Image,
+					})
+				)
+				console.log('Base64 image saved to localStorage')
+			}
+
+			toast.success('Profile image uploaded successfully! (Local storage)')
+			setUploading(false)
+		}
+
+		reader.onerror = () => {
+			console.error('Failed to read file')
+			toast.error('Failed to process image')
+			setUploading(false)
+		}
+
+		reader.readAsDataURL(file)
+	}
 
 	useEffect(() => {
 		fetchUserProfile()
@@ -172,10 +228,7 @@ export default function UserProfile() {
 			}
 
 			console.log('User data loaded:', userData)
-			console.log(
-				'Image URL from localStorage:',
-				savedImageData ? 'Base64 image found' : 'No saved image'
-			)
+			console.log('Image URL:', userData.photoUrl ? 'Image found' : 'No image')
 			setUser(userData)
 			setFormData({
 				name: userData.name || '',
@@ -259,8 +312,8 @@ export default function UserProfile() {
 			const userProfileKey = `userProfile_${user!._id}`
 			localStorage.setItem(userProfileKey, JSON.stringify(formData))
 
-			// Also save image data separately if it's a base64 image
-			if (formData.photoUrl && formData.photoUrl.startsWith('data:')) {
+			// Also save image data separately
+			if (formData.photoUrl) {
 				const savedImageKey = `userImage_${user!._id}`
 				localStorage.setItem(savedImageKey, formData.photoUrl)
 				console.log('Image data saved separately to localStorage')
@@ -277,44 +330,21 @@ export default function UserProfile() {
 		}
 	}
 
-	// Function to get image URL that works around CORS issues
-	const getImageUrl = (photoUrl: string | undefined) => {
-		if (!photoUrl) return ''
-
-		// If it's already a data URL (base64), use it directly
-		if (photoUrl.startsWith('data:')) {
-			return photoUrl
-		}
-
-		// If it's a server URL, we need to handle CORS
-		if (photoUrl.includes('kingkebab-backend.onrender.com')) {
-			// For now, let's try to load it directly and fall back to placeholder if it fails
-			return photoUrl
-		}
-
-		return photoUrl
-	}
-
+	// Improved image upload handler with better mobile support
 	const handleImageUpload = async (
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
 		const file = event.target.files?.[0]
 		if (!file) return
 
-		console.log('=== IMAGE UPLOAD DEBUG ===')
+		console.log('=== MOBILE IMAGE UPLOAD DEBUG ===')
 		console.log('File selected:', {
 			name: file.name,
 			size: file.size,
 			type: file.type,
-			lastModified: file.lastModified,
 		})
-		console.log(
-			'API URL being used:',
-			process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-		)
-		console.log('Token available:', !!localStorage.getItem('token'))
 
-		// Validate file size (2MB limit)
+		// Validate file size (2MB limit for base64 storage)
 		if (file.size > 2 * 1024 * 1024) {
 			toast.error('File size must be less than 2MB')
 			return
@@ -326,94 +356,15 @@ export default function UserProfile() {
 			return
 		}
 
-		setUploading(true)
+		// Use base64 method directly for now (avoiding UploadThing configuration issues)
+		console.log('Using base64 upload method for mobile compatibility')
+		handleFallbackImageUpload(file)
+	}
 
-		// First, create a local preview immediately
-		const reader = new FileReader()
-		reader.onload = e => {
-			const base64Image = e.target?.result as string
-			console.log('Base64 image created for immediate preview')
-
-			// Update form data with base64 for immediate display
-			setFormData(prev => ({
-				...prev,
-				photoUrl: base64Image,
-			}))
-
-			// Update user state for immediate display
-			setUser(prev =>
-				prev
-					? {
-							...prev,
-							photoUrl: base64Image,
-					  }
-					: null
-			)
-
-			// Save base64 image to localStorage immediately for persistence across refreshes
-			if (user?._id) {
-				const savedImageKey = `userImage_${user._id}`
-				localStorage.setItem(savedImageKey, base64Image)
-				console.log(
-					'Base64 image saved to localStorage with key:',
-					savedImageKey
-				)
-			}
-		}
-		reader.readAsDataURL(file)
-
-		// Then try to upload to server in background
-		try {
-			console.log('Calling uploadProfileImage API function...')
-			const result = await uploadProfileImage(file)
-			console.log('Upload successful:', result)
-			console.log('result.user.photoUrl:', result.user.photoUrl)
-			console.log('result.imageUrl:', result.imageUrl)
-
-			// Server upload successful - we can keep the base64 image since server images have CORS issues
-			// Save the server URL to localStorage for reference
-			if (user?._id) {
-				const userProfileKey = `userProfile_${user._id}`
-				const currentProfile = JSON.parse(
-					localStorage.getItem(userProfileKey) || '{}'
-				)
-				localStorage.setItem(
-					userProfileKey,
-					JSON.stringify({
-						...currentProfile,
-						serverPhotoUrl: result.user.photoUrl || result.imageUrl, // Server URL for reference
-						photoUrl: formData.photoUrl, // Keep base64 for display
-					})
-				)
-				console.log('Saved to localStorage with key:', userProfileKey)
-			}
-
-			toast.success('Profile image uploaded successfully!')
-		} catch (error) {
-			console.error('Server upload failed:', error)
-
-			const errorMessage =
-				error instanceof Error ? error.message : 'Unknown error'
-			console.log('Error message:', errorMessage)
-
-			// Show error but keep the local preview
-			if (
-				errorMessage.includes('Failed to fetch') ||
-				errorMessage.includes('NetworkError')
-			) {
-				toast.error(
-					'Network error: Image saved locally, will sync when server is available'
-				)
-			} else if (
-				errorMessage.includes('401') ||
-				errorMessage.includes('authenticate')
-			) {
-				toast.error('Authentication error: Image saved locally')
-			} else {
-				toast.error('Server upload failed: Image saved locally')
-			}
-		} finally {
-			setUploading(false)
+	// Mobile-friendly image upload trigger
+	const triggerImageUpload = () => {
+		if (fileInputRef.current) {
+			fileInputRef.current.click()
 		}
 	}
 
@@ -496,19 +447,19 @@ export default function UserProfile() {
 								<Avatar className='relative w-32 h-32 border-4 border-blue-600/60 shadow-2xl ring-4 ring-blue-600/30'>
 									<AvatarImage
 										key={formData.photoUrl || user?.photoUrl || 'default'}
-										src={getImageUrl(formData.photoUrl || user?.photoUrl)}
+										src={formData.photoUrl || user?.photoUrl}
 										alt={user?.name || user?.username}
 										className='object-cover'
 										onLoad={() =>
 											console.log(
 												'Image loaded successfully:',
-												getImageUrl(formData.photoUrl || user?.photoUrl)
+												formData.photoUrl || user?.photoUrl
 											)
 										}
 										onError={e => {
 											console.log(
 												'Image failed to load:',
-												getImageUrl(formData.photoUrl || user?.photoUrl)
+												formData.photoUrl || user?.photoUrl
 											)
 											console.log('Error event:', e)
 										}}
@@ -698,23 +649,23 @@ export default function UserProfile() {
 												</div>
 											</div>
 
-											{/* Profile Image */}
+											{/* Profile Image - Improved Mobile Support */}
 											<div className='space-y-4'>
 												<div className='flex items-center gap-3'>
 													<div className='w-6 h-6 rounded-lg bg-gradient-to-r from-indigo-700 to-purple-700 flex items-center justify-center shadow-lg'>
-														<UserIcon className='w-3 h-3 text-white' />
+														<Camera className='w-3 h-3 text-white' />
 													</div>
 													<h3 className='text-lg font-bold text-white'>
 														Profile Image
 													</h3>
 												</div>
-												<div className='flex flex-col items-center space-y-4 p-4 bg-slate-900/40 rounded-2xl border border-blue-600/30 backdrop-blur-sm'>
+												<div className='flex flex-col items-center space-y-4 p-6 bg-slate-900/40 rounded-2xl border border-blue-600/30 backdrop-blur-sm'>
 													{formData.photoUrl && (
 														<div className='relative group'>
 															<div className='absolute -inset-2 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-full blur-lg opacity-60 group-hover:opacity-80 transition-opacity duration-300'></div>
 															<Avatar className='relative w-24 h-24 border-4 border-blue-600/60 shadow-2xl'>
 																<AvatarImage
-																	src={getImageUrl(formData.photoUrl)}
+																	src={formData.photoUrl}
 																	alt='Preview'
 																	className='object-cover'
 																/>
@@ -724,23 +675,44 @@ export default function UserProfile() {
 															</Avatar>
 														</div>
 													)}
-													<div>
-														<input
-															type='file'
-															accept='image/*'
-															onChange={handleImageUpload}
-															className='hidden'
-															id='image-upload'
-														/>
-														<Label
-															htmlFor='image-upload'
-															className='cursor-pointer inline-flex items-center justify-center rounded-xl text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-blue-700 to-indigo-700 text-white hover:from-indigo-700 hover:to-purple-700 h-10 px-4 py-2 shadow-lg transform hover:scale-105'
+
+													{/* Hidden file input */}
+													<input
+														ref={fileInputRef}
+														type='file'
+														accept='image/*'
+														onChange={handleImageUpload}
+														className='hidden'
+														capture='environment' // Mobile camera preference
+													/>
+
+													{/* Mobile-friendly upload buttons */}
+													<div className='flex flex-col sm:flex-row gap-3 w-full'>
+														<Button
+															type='button'
+															onClick={triggerImageUpload}
+															disabled={uploading}
+															className='flex-1 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg rounded-xl h-12 font-semibold transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed'
 														>
-															{uploading
-																? '⏳ Uploading...'
-																: '📸 Choose Image'}
-														</Label>
+															{uploading ? (
+																<>
+																	<Upload className='w-4 h-4 mr-2 animate-spin' />
+																	Uploading...
+																</>
+															) : (
+																<>
+																	<Camera className='w-4 h-4 mr-2' />
+																	Choose Photo
+																</>
+															)}
+														</Button>
 													</div>
+
+													<p className='text-xs text-blue-300/70 text-center'>
+														Maximum file size: 4MB
+														<br />
+														Supported formats: JPG, PNG, GIF
+													</p>
 												</div>
 											</div>
 
@@ -754,40 +726,63 @@ export default function UserProfile() {
 														Skills
 													</h3>
 												</div>
-												<div className='flex flex-wrap gap-2 mb-4'>
-													{formData.skills.map((skill, index) => (
-														<Badge
-															key={index}
-															variant='secondary'
-															className='cursor-pointer bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-600/50 rounded-full px-3 py-1 text-sm font-medium transform hover:scale-105 transition-all duration-200'
-															onClick={() => removeSkill(skill)}
+												<div className='space-y-3'>
+													<div className='flex flex-wrap gap-2'>
+														{formData.skills.map((skill, index) => (
+															<Badge
+																key={index}
+																variant='secondary'
+																className='bg-blue-700/30 text-blue-200 hover:bg-blue-600/40 px-3 py-1 rounded-full border border-blue-600/40 backdrop-blur-sm'
+															>
+																{skill}
+																<button
+																	type='button'
+																	onClick={() => removeSkill(skill)}
+																	className='ml-2 text-blue-300 hover:text-red-400 transition-colors duration-200'
+																>
+																	×
+																</button>
+															</Badge>
+														))}
+													</div>
+													<div className='flex gap-2'>
+														<Input
+															placeholder='Add a skill...'
+															className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
+															onKeyPress={e => {
+																if (e.key === 'Enter') {
+																	e.preventDefault()
+																	const input = e.target as HTMLInputElement
+																	if (input.value.trim()) {
+																		addSkill(input.value.trim())
+																		input.value = ''
+																	}
+																}
+															}}
+														/>
+														<Button
+															type='button'
+															onClick={e => {
+																const input = (e.target as HTMLElement)
+																	.previousElementSibling as HTMLInputElement
+																if (input?.value.trim()) {
+																	addSkill(input.value.trim())
+																	input.value = ''
+																}
+															}}
+															className='bg-gradient-to-r from-purple-700 to-pink-700 hover:from-pink-700 hover:to-red-700 text-white rounded-xl px-4 shadow-lg transform hover:scale-105 transition-all duration-300'
 														>
-															{skill} ❌
-														</Badge>
-													))}
-												</div>
-												<div className='flex gap-3'>
-													<Input
-														placeholder='Add a skill and press Enter...'
-														onKeyPress={(
-															e: React.KeyboardEvent<HTMLInputElement>
-														) => {
-															if (e.key === 'Enter') {
-																e.preventDefault()
-																addSkill(e.currentTarget.value)
-																e.currentTarget.value = ''
-															}
-														}}
-														className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
-													/>
+															Add
+														</Button>
+													</div>
 												</div>
 											</div>
 
 											{/* Emergency Contact */}
 											<div className='space-y-4'>
 												<div className='flex items-center gap-3'>
-													<div className='w-6 h-6 rounded-lg bg-gradient-to-r from-pink-700 to-red-700 flex items-center justify-center shadow-lg'>
-														<Phone className='w-3 h-3 text-white' />
+													<div className='w-6 h-6 rounded-lg bg-gradient-to-r from-red-700 to-orange-700 flex items-center justify-center shadow-lg'>
+														<Shield className='w-3 h-3 text-white' />
 													</div>
 													<h3 className='text-lg font-bold text-white'>
 														Emergency Contact
@@ -796,13 +791,13 @@ export default function UserProfile() {
 												<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 													<div className='space-y-2'>
 														<Label
-															htmlFor='emergency-name'
+															htmlFor='emergencyName'
 															className='text-sm text-blue-200 font-medium'
 														>
 															👤 Name
 														</Label>
 														<Input
-															id='emergency-name'
+															id='emergencyName'
 															value={formData.emergencyContact.name}
 															onChange={e =>
 																setFormData(prev => ({
@@ -813,19 +808,19 @@ export default function UserProfile() {
 																	},
 																}))
 															}
-															placeholder='Contact name'
+															placeholder='Emergency contact name'
 															className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
 														/>
 													</div>
 													<div className='space-y-2'>
 														<Label
-															htmlFor='emergency-phone'
+															htmlFor='emergencyPhone'
 															className='text-sm text-blue-200 font-medium'
 														>
 															📞 Phone
 														</Label>
 														<Input
-															id='emergency-phone'
+															id='emergencyPhone'
 															value={formData.emergencyContact.phone}
 															onChange={e =>
 																setFormData(prev => ({
@@ -836,32 +831,40 @@ export default function UserProfile() {
 																	},
 																}))
 															}
-															placeholder='Contact phone'
+															placeholder='Emergency contact phone'
 															className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
 														/>
 													</div>
 													<div className='space-y-2'>
 														<Label
-															htmlFor='emergency-relationship'
+															htmlFor='emergencyRelationship'
 															className='text-sm text-blue-200 font-medium'
 														>
-															❤️ Relationship
+															💝 Relationship
 														</Label>
-														<Input
-															id='emergency-relationship'
+														<Select
 															value={formData.emergencyContact.relationship}
-															onChange={e =>
+															onValueChange={value =>
 																setFormData(prev => ({
 																	...prev,
 																	emergencyContact: {
 																		...prev.emergencyContact,
-																		relationship: e.target.value,
+																		relationship: value,
 																	},
 																}))
 															}
-															placeholder='Relationship'
-															className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
-														/>
+														>
+															<SelectTrigger className='bg-slate-900/60 border-blue-600/40 text-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'>
+																<SelectValue placeholder='Relationship' />
+															</SelectTrigger>
+															<SelectContent className='bg-slate-900/98 border-blue-600/40 text-white backdrop-blur-lg'>
+																<SelectItem value='Parent'>Parent</SelectItem>
+																<SelectItem value='Spouse'>Spouse</SelectItem>
+																<SelectItem value='Sibling'>Sibling</SelectItem>
+																<SelectItem value='Friend'>Friend</SelectItem>
+																<SelectItem value='Other'>Other</SelectItem>
+															</SelectContent>
+														</Select>
 													</div>
 												</div>
 											</div>
