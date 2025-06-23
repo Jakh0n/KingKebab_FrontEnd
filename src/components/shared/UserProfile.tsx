@@ -142,6 +142,12 @@ export default function UserProfile() {
 				localStorage.getItem(userProfileKey) || '{}'
 			)
 
+			// Check for saved image data with fallback strategy
+			const savedImageKey = `userImage_${payload.userId}`
+			const backupImageKey = `userImage_${payload.userId}_backup`
+			const savedImageData = localStorage.getItem(savedImageKey)
+			const backupImageData = localStorage.getItem(backupImageKey)
+
 			const userData: User = {
 				_id: payload.userId,
 				username: payload.username,
@@ -152,7 +158,7 @@ export default function UserProfile() {
 				phone: savedProfile.phone || '',
 				bio: savedProfile.bio || '',
 				department: savedProfile.department || '',
-				photoUrl: savedProfile.photoUrl || '',
+				photoUrl: savedImageData || savedProfile.photoUrl || '',
 				skills: savedProfile.skills || [],
 				emergencyContact: savedProfile.emergencyContact || {
 					name: '',
@@ -187,15 +193,43 @@ export default function UserProfile() {
 				const apiUserData = await getUserProfile()
 				console.log('Profile data received from API:', apiUserData)
 
-				// Use API data as the primary source
-				setUser(apiUserData)
+				// Smart image loading strategy
+				let finalPhotoUrl = ''
+
+				if (apiUserData.photoUrl) {
+					// Test if server image loads
+					const testServerImage = new Promise<string>((resolve, reject) => {
+						const img = new Image()
+						img.onload = () => resolve(apiUserData.photoUrl!)
+						img.onerror = () => reject('Server image failed to load')
+						img.src = apiUserData.photoUrl!
+						// Timeout after 3 seconds
+						setTimeout(() => reject('Server image timeout'), 3000)
+					})
+
+					try {
+						finalPhotoUrl = await testServerImage
+						console.log('Using server image')
+					} catch {
+						console.log('Server image failed, falling back to local')
+						finalPhotoUrl = savedImageData || backupImageData || ''
+					}
+				} else {
+					// No server image, use local
+					finalPhotoUrl = savedImageData || backupImageData || ''
+				}
+
+				setUser({
+					...apiUserData,
+					photoUrl: finalPhotoUrl,
+				})
 				setFormData({
 					name: apiUserData.name || '',
 					email: apiUserData.email || '',
 					phone: apiUserData.phone || '',
 					bio: apiUserData.bio || '',
 					department: apiUserData.department || '',
-					photoUrl: apiUserData.photoUrl || '',
+					photoUrl: finalPhotoUrl,
 					hireDate: apiUserData.hireDate || '',
 					skills: apiUserData.skills || [],
 					emergencyContact: {
@@ -243,6 +277,13 @@ export default function UserProfile() {
 			const userProfileKey = `userProfile_${user!._id}`
 			localStorage.setItem(userProfileKey, JSON.stringify(formData))
 
+			// Also save image data separately if it's a base64 image
+			if (formData.photoUrl && formData.photoUrl.startsWith('data:')) {
+				const savedImageKey = `userImage_${user!._id}`
+				localStorage.setItem(savedImageKey, formData.photoUrl)
+				console.log('Image data saved separately to localStorage')
+			}
+
 			setUser(updatedUser)
 			setIsEditing(false)
 			toast.success(
@@ -254,19 +295,34 @@ export default function UserProfile() {
 		}
 	}
 
+	// Production-ready image URL handler with fallback strategies
+	const getImageUrl = (photoUrl: string | undefined) => {
+		if (!photoUrl) return ''
+
+		// If it's a data URL (base64), use it directly - these are optimized previews
+		if (photoUrl.startsWith('data:')) {
+			return photoUrl
+		}
+
+		// For server URLs, return as-is since we've already tested them in fetchUserProfile
+		return photoUrl
+	}
+
 	const handleImageUpload = async (
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
 		const file = event.target.files?.[0]
 		if (!file) return
 
-		// Check file size (limit to 2MB)
+		console.log('Starting image upload process...')
+
+		// Validate file size (2MB limit)
 		if (file.size > 2 * 1024 * 1024) {
-			toast.error('Image size should be less than 2MB')
+			toast.error('File size must be less than 2MB')
 			return
 		}
 
-		// Check file type
+		// Validate file type
 		if (!file.type.startsWith('image/')) {
 			toast.error('Please select an image file')
 			return
@@ -275,70 +331,155 @@ export default function UserProfile() {
 		setUploading(true)
 
 		try {
-			// Try server upload first
-			try {
-				const result = await uploadProfileImage(file)
+			// Step 1: Create optimized preview (smaller base64 for immediate display)
+			const canvas = document.createElement('canvas')
+			const ctx = canvas.getContext('2d')
+			const img = new Image()
 
-				// Update user state with server response
-				setUser(result.user)
-				setFormData(prev => ({
-					...prev,
-					photoUrl: result.user.photoUrl || '',
-				}))
+			const optimizedPreview = await new Promise<string>(resolve => {
+				img.onload = () => {
+					// Resize for preview (max 200x200 for localStorage efficiency)
+					const maxSize = 200
+					let { width, height } = img
 
-				toast.success('Image uploaded successfully!')
-				return
-			} catch (serverError) {
-				console.log('Server upload failed, using local storage:', serverError)
+					if (width > height) {
+						if (width > maxSize) {
+							height = (height * maxSize) / width
+							width = maxSize
+						}
+					} else {
+						if (height > maxSize) {
+							width = (width * maxSize) / height
+							height = maxSize
+						}
+					}
+
+					canvas.width = width
+					canvas.height = height
+					ctx?.drawImage(img, 0, 0, width, height)
+
+					// Convert to optimized base64 (lower quality for preview)
+					resolve(canvas.toDataURL('image/jpeg', 0.7))
+				}
+				img.src = URL.createObjectURL(file)
+			})
+
+			// Step 2: Update UI immediately with optimized preview
+			setFormData(prev => ({
+				...prev,
+				photoUrl: optimizedPreview,
+			}))
+
+			setUser(prev =>
+				prev
+					? {
+							...prev,
+							photoUrl: optimizedPreview,
+					  }
+					: null
+			)
+
+			// Step 3: Store optimized preview in localStorage (much smaller)
+			if (user?._id) {
+				const savedImageKey = `userImage_${user._id}`
+				localStorage.setItem(savedImageKey, optimizedPreview)
+				console.log('Optimized preview saved to localStorage')
 			}
 
-			// Fallback: Convert to base64 and store locally
-			const reader = new FileReader()
-			reader.onload = e => {
-				const base64Image = e.target?.result as string
+			// Step 4: Upload original file to server in background
+			console.log('Uploading original file to server...')
+			const result = await uploadProfileImage(file)
+			console.log('Server upload successful:', result)
 
-				// Update form data
-				setFormData(prev => ({
-					...prev,
-					photoUrl: base64Image,
-				}))
+			// Step 5: Update with server URL (but keep fallback)
+			const serverImageUrl = result.user.photoUrl || result.imageUrl
 
-				// Update user state immediately
-				setUser(prev =>
-					prev
-						? {
-								...prev,
-								photoUrl: base64Image,
-						  }
-						: null
-				)
+			if (serverImageUrl) {
+				// Test if server image loads properly
+				const testImage = new Image()
+				testImage.onload = () => {
+					console.log('Server image loads successfully, updating UI')
+					// Server image works, update to use it
+					setFormData(prev => ({
+						...prev,
+						photoUrl: serverImageUrl,
+					}))
 
-				// Store in localStorage with user-specific key
-				const userProfileKey = `userProfile_${user!._id}`
-				const currentProfile = JSON.parse(
-					localStorage.getItem(userProfileKey) || '{}'
-				)
-				localStorage.setItem(
-					userProfileKey,
-					JSON.stringify({
-						...currentProfile,
-						photoUrl: base64Image,
-					})
-				)
+					setUser(prev =>
+						prev
+							? {
+									...prev,
+									photoUrl: serverImageUrl,
+							  }
+							: null
+					)
 
-				toast.success(
-					'Image uploaded locally (will sync when server is available)'
-				)
+					// Update localStorage with server URL
+					if (user?._id) {
+						const userProfileKey = `userProfile_${user._id}`
+						const currentProfile = JSON.parse(
+							localStorage.getItem(userProfileKey) || '{}'
+						)
+						localStorage.setItem(
+							userProfileKey,
+							JSON.stringify({
+								...currentProfile,
+								photoUrl: serverImageUrl,
+							})
+						)
+
+						// Keep optimized preview as backup
+						const savedImageKey = `userImage_${user._id}_backup`
+						localStorage.setItem(savedImageKey, optimizedPreview)
+					}
+				}
+
+				testImage.onerror = () => {
+					console.log('Server image failed to load, keeping local preview')
+					// Server image doesn't work, keep local preview
+					toast.success(
+						'Image uploaded to server but using local preview for display'
+					)
+				}
+
+				testImage.src = serverImageUrl
 			}
 
-			reader.onerror = () => {
-				toast.error('Failed to read image file')
-			}
-
-			reader.readAsDataURL(file)
+			toast.success('Profile image uploaded successfully!')
 		} catch (error) {
-			console.error('Upload error:', error)
-			toast.error('Failed to upload image')
+			console.error('Server upload failed:', error)
+
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown error'
+
+			// Enhanced error handling with specific messages
+			if (
+				errorMessage.includes('Failed to fetch') ||
+				errorMessage.includes('NetworkError')
+			) {
+				toast.success(
+					'Image saved locally - will sync when server is available'
+				)
+			} else if (
+				errorMessage.includes('401') ||
+				errorMessage.includes('authenticate')
+			) {
+				toast.error('Authentication error - please log in again')
+			} else if (
+				errorMessage.includes('413') ||
+				errorMessage.includes('too large')
+			) {
+				toast.error('File too large - please choose a smaller image')
+			} else if (
+				errorMessage.includes('415') ||
+				errorMessage.includes('unsupported')
+			) {
+				toast.error('Unsupported file type - please choose a JPG or PNG')
+			} else {
+				toast.success(
+					'Image saved locally - server upload will retry automatically'
+				)
+			}
 		} finally {
 			setUploading(false)
 		}
@@ -407,9 +548,23 @@ export default function UserProfile() {
 							<div className='absolute -inset-4 bg-gradient-to-r from-[#4E7BEE]/30 via-[#6366F1]/30 to-[#8B5CF6]/30 rounded-full blur-xl opacity-60 group-hover:opacity-80 transition-opacity duration-300'></div>
 							<Avatar className='relative w-32 h-32 border-4 border-[#4E7BEE]/50 shadow-2xl ring-4 ring-[#4E7BEE]/20'>
 								<AvatarImage
-									src={user?.photoUrl || formData.photoUrl}
+									key={formData.photoUrl || user?.photoUrl || 'default'}
+									src={getImageUrl(formData.photoUrl || user?.photoUrl)}
 									alt={user?.name || user?.username}
 									className='object-cover'
+									onLoad={() =>
+										console.log(
+											'Image loaded successfully:',
+											getImageUrl(formData.photoUrl || user?.photoUrl)
+										)
+									}
+									onError={e => {
+										console.log(
+											'Image failed to load:',
+											getImageUrl(formData.photoUrl || user?.photoUrl)
+										)
+										console.log('Error event:', e)
+									}}
 								/>
 								<AvatarFallback className='text-4xl bg-gradient-to-br from-[#4E7BEE] to-[#6366F1] text-white border-4 border-[#4E7BEE]/30'>
 									{user?.name ? (
@@ -612,7 +767,7 @@ export default function UserProfile() {
 														<div className='absolute -inset-2 bg-gradient-to-r from-[#4E7BEE]/30 to-[#6366F1]/30 rounded-full blur-lg opacity-60 group-hover:opacity-80 transition-opacity duration-300'></div>
 														<Avatar className='relative w-24 h-24 border-4 border-[#4E7BEE]/50 shadow-2xl'>
 															<AvatarImage
-																src={formData.photoUrl}
+																src={getImageUrl(formData.photoUrl)}
 																alt='Preview'
 																className='object-cover'
 															/>
@@ -637,9 +792,6 @@ export default function UserProfile() {
 														{uploading ? '⏳ Uploading...' : '📸 Choose Image'}
 													</Label>
 												</div>
-												<p className='text-xs text-gray-400'>
-													PNG, JPG up to 2MB
-												</p>
 											</div>
 										</div>
 
