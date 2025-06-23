@@ -459,19 +459,30 @@ export default function DashboardPage() {
 							)}
 						</div>
 					</div>
-					<Button
-						onClick={handleLogout}
-						className='w-full sm:w-auto bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer'
-					>
-						{isLoading ? (
-							<span className='ml-1'>Logging out...</span>
-						) : (
-							<>
-								<span className='ml-1'>Logout</span>
-								<LogOut size={16} />
-							</>
-						)}
-					</Button>
+
+					<div className='flex gap-2 w-full sm:w-auto'>
+						<Button
+							onClick={() => router.push('/dashboard/profile')}
+							variant='outline'
+							className='flex-1 sm:flex-none bg-transparent border-[#4CC4C0]/20 text-[#4CC4C0] hover:bg-[#4CC4C0]/10 text-sm'
+						>
+							<User size={16} className='mr-1' />
+							Profile
+						</Button>
+						<Button
+							onClick={handleLogout}
+							className='flex-1 sm:flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer'
+						>
+							{isLoading ? (
+								<span className='ml-1'>Logging out...</span>
+							) : (
+								<>
+									<span className='ml-1'>Logout</span>
+									<LogOut size={16} />
+								</>
+							)}
+						</Button>
+					</div>
 				</div>
 
 				{/* E'lonlar Banner */}
@@ -863,7 +874,6 @@ export default function DashboardPage() {
 															<div className='flex gap-1'>
 																<Button
 																	variant='ghost'
-																	size='icon'
 																	onClick={() => handleEditEntry(entry)}
 																	disabled={
 																		Math.ceil(
@@ -890,7 +900,6 @@ export default function DashboardPage() {
 																</Button>
 																<Button
 																	variant='ghost'
-																	size='icon'
 																	onClick={() => handleDelete(entry._id)}
 																	className='hover:bg-[#2A3447] text-red-500 hover:text-red-600 h-8 w-8'
 																>
