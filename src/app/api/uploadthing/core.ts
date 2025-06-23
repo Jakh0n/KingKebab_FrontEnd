@@ -3,11 +3,9 @@ import { createUploadthing, type FileRouter } from 'uploadthing/next'
 const f = createUploadthing()
 
 export const ourFileRouter = {
-<<<<<<< HEAD
 	imageUploader: f({ image: { maxFileSize: '4MB' } })
 		.middleware(async () => ({ userId: 'user-id' }))
 		.onUploadComplete(async ({ file }) => ({ url: file.url })),
-=======
 	profileImage: f({ image: { maxFileSize: '4MB', maxFileCount: 1 } })
 		.middleware(async () => {
 			// This code runs on your server before upload
@@ -20,7 +18,6 @@ export const ourFileRouter = {
 
 			return { uploadedBy: metadata.userId, url: file.url }
 		}),
->>>>>>> frontend-image-upload
 } satisfies FileRouter
 
 export type OurFileRouter = typeof ourFileRouter
