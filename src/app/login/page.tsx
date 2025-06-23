@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { login } from '@/lib/api'
+import { login, logout } from '@/lib/api'
 import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
 	const [username, setUsername] = useState('')
@@ -21,8 +22,43 @@ export default function LoginPage() {
 	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault()
 		setIsLoading(true)
+		setError('')
+
+		// Avvalgi barcha ma'lumotlarni tozalash
+		logout()
+
 		try {
+			if (!username || !password) {
+				throw new Error('Username and password are required')
+			}
+
+			// Rate limiting
+			const lastAttempt = localStorage.getItem('lastLoginAttempt')
+			if (lastAttempt) {
+				const timeDiff = Date.now() - parseInt(lastAttempt)
+				if (timeDiff < 2000) {
+					// 2 sekund kutish
+					throw new Error('Please wait before trying again')
+				}
+			}
+			localStorage.setItem('lastLoginAttempt', Date.now().toString())
+
 			const response = await login(username, password)
+
+			if (!response || !response.token) {
+				throw new Error('Invalid response from server')
+			}
+
+			// Token validatsiyasi
+			try {
+				const payload = JSON.parse(atob(response.token.split('.')[1]))
+				if (!payload.exp || Date.now() >= payload.exp * 1000) {
+					throw new Error('Token has expired')
+				}
+			} catch {
+				throw new Error('Invalid token format')
+			}
+
 			localStorage.setItem('token', response.token)
 			localStorage.setItem('position', response.position)
 
@@ -30,13 +66,26 @@ export default function LoginPage() {
 			const token = response.token
 			const payload = JSON.parse(atob(token.split('.')[1]))
 
+			// Muvaffaqiyatli login uchun toast
+			toast.success('Successfully logged in!', {
+				description: `Welcome back, ${username}!`,
+				duration: 3000,
+			})
+
 			if (payload.isAdmin) {
 				router.push('/admin')
 			} else {
 				router.push('/dashboard')
 			}
 		} catch (err) {
+			console.error('Login error:', err)
 			setError(err instanceof Error ? err.message : 'Login failed')
+			// Xatolik uchun toast
+			toast.error('Login failed', {
+				description:
+					err instanceof Error ? err.message : 'Something went wrong',
+				duration: 3000,
+			})
 		} finally {
 			setIsLoading(false)
 		}
@@ -47,7 +96,7 @@ export default function LoginPage() {
 			<Card className='w-full max-w-md'>
 				<CardHeader>
 					<Image
-						src='/cropped-kinglogo.avif'
+						src='/image.png'
 						alt='King Kebab Logo'
 						className='w-24 h-24 object-contain mb-4 mx-auto'
 						width={100}
