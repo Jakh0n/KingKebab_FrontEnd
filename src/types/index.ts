@@ -1,8 +1,27 @@
 export interface User {
 	_id: string
 	username: string
+	name?: string
+	email?: string
+	phone?: string
+	bio?: string
 	position: string
 	employeeId: string
+	department?: string
+	salary?: number
+	hireDate?: string
+	photoUrl?: string
+	isAdmin?: boolean
+	isActive?: boolean
+	lastLogin?: string
+	skills?: string[]
+	emergencyContact?: {
+		name?: string
+		phone?: string
+		relationship?: string
+	}
+	createdAt?: string
+	updatedAt?: string
 }
 
 export interface TimeEntry {
