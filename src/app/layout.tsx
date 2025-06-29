@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 			url: 'https://flami.org',
 		},
 	],
-	icons: { icon: '/image.png' },
+	icons: { icon: '/cropped-kinglogo.avif' },
 	openGraph: {
 		title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
 		description:
@@ -33,7 +33,14 @@ export const metadata: Metadata = {
 		type: 'website',
 		url: 'https://www.kingkebab.co.kr',
 		locale: 'kr-KR',
-		images: '/image.png',
+		images: [
+			{
+				url: '/workinghours.jpg',
+				width: 1200,
+				height: 630,
+				alt: 'King Kebab - The best and most delicious kebab restaurant in Korea',
+			},
+		],
 		countryName: 'Korea',
 		siteName: 'King Kebab',
 		emails: 'info@kingkebab.co.kr',
