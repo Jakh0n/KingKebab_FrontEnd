@@ -1,3 +1,4 @@
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import Footer from '@/components/shared/footer'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
@@ -32,6 +33,7 @@ export const metadata: Metadata = {
 		apple: '/cropped-kinglogo.avif',
 		shortcut: '/cropped-kinglogo.avif',
 	},
+	manifest: '/manifest.json',
 
 	openGraph: {
 		title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
@@ -66,6 +68,7 @@ export default function RootLayout({
 				<link rel='icon' type='image/x-icon' href='/favicon.ico' />
 				<link rel='apple-touch-icon' href='/apple-touch-icon.png' />
 				<link rel='shortcut icon' href='/favicon.ico' />
+				<link rel='manifest' href='/manifest.json' />
 				<meta name='theme-color' content='#1f2937' />
 				<meta name='apple-mobile-web-app-capable' content='yes' />
 				<meta name='apple-mobile-web-app-status-bar-style' content='default' />
@@ -74,6 +77,7 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
+				<ServiceWorkerRegistration />
 				{children}
 				<Footer />
 				<Toaster />
