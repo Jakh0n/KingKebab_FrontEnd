@@ -17,41 +17,35 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	metadataBase: new URL('https://www.kingkebab.co.kr/'),
-	title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
+	title: 'King Kebab - Time Management System',
 	description:
-		'King Kebab - The best and most delicious kebab restaurant in Korea. We serve you the finest dishes from Turkish and Uzbek cuisine. Fast and quality service, affordable prices, and amazing taste.',
-
+		"King Kebab Time Management System - Streamline your restaurant's supply chain with our comprehensive management solution. Track inventory, manage orders, and analyze data across multiple branches.",
 	authors: [
 		{
 			name: 'Jakhon Yokubov',
-			url: 'https://flami.org',
+			url: 'https://www.kingkebab.co.kr',
 		},
 	],
-
 	icons: {
-		icon: '/cropped-kinglogo.avif',
-		apple: '/cropped-kinglogo.avif',
-		shortcut: '/cropped-kinglogo.avif',
+		icon: [
+			{ url: '/crown.jpg', sizes: '32x32', type: 'image/jpg' },
+			{ url: '/crown.jpg', sizes: '16x16', type: 'image/jpg' },
+			{ url: '/crown.jpg', sizes: '48x48', type: 'image/jpg' },
+		],
+		apple: [{ url: '/crown.jpg', sizes: '180x180', type: 'image/jpg' }],
+		shortcut: '/crown.jpg',
 	},
 	manifest: '/manifest.json',
-
 	openGraph: {
-		title: 'King Kebab - The best and most delicious kebab restaurant in Korea',
+		title: 'King Kebab - Time Management System',
 		description:
 			'King Kebab - The best and most delicious kebab restaurant in Korea. We serve you the finest dishes from Turkish and Uzbek cuisine. Fast and quality service, affordable prices, and amazing taste.',
 		type: 'website',
 		url: 'https://www.kingkebab.co.kr',
 		locale: 'kr-KR',
-		images: [
-			{
-				url: '/cropped-kinglogo.avif',
-				width: 1200,
-				height: 630,
-				alt: 'King Kebab - The best and most delicious kebab restaurant in Korea',
-			},
-		],
+		images: '/crown.jpg',
 		countryName: 'Korea',
-		siteName: 'King Kebab',
+		siteName: 'King Kebab - Time Management System',
 		emails: 'info@kingkebab.co.kr',
 	},
 }
@@ -64,15 +58,18 @@ export default function RootLayout({
 	return (
 		<html lang='en'>
 			<head>
-				<link rel='icon' type='image/avif' href='/cropped-kinglogo.avif' />
-				<link rel='icon' type='image/x-icon' href='/favicon.ico' />
-				<link rel='apple-touch-icon' href='/apple-touch-icon.png' />
-				<link rel='shortcut icon' href='/favicon.ico' />
+				<link rel='icon' type='image/jpg' href='/crown.jpg' />
+				<link rel='icon' type='image/x-icon' href='/crown.jpg' />
+				<link rel='apple-touch-icon' href='/crown.jpg' />
+				<link rel='shortcut icon' href='/crown.jpg' />
 				<link rel='manifest' href='/manifest.json' />
 				<meta name='theme-color' content='#1f2937' />
 				<meta name='apple-mobile-web-app-capable' content='yes' />
 				<meta name='apple-mobile-web-app-status-bar-style' content='default' />
-				<meta name='apple-mobile-web-app-title' content='King Kebab' />
+				<meta
+					name='apple-mobile-web-app-title'
+					content='King Kebab - Time Management System'
+				/>
 			</head>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
