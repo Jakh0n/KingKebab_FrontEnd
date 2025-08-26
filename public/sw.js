@@ -4,7 +4,7 @@ const urlsToCache = [
 	'/login',
 	'/register',
 	'/dashboard',
-	'/cropped-kinglogo.avif',
+	'/crown.jpg',
 	'/favicon.ico',
 	'/apple-touch-icon.png',
 ]
