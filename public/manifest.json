@@ -1,0 +1,35 @@
+{
+	"name": "King Kebab - The best and most delicious kebab restaurant in Korea",
+	"short_name": "King Kebab",
+	"description": "The best and most delicious kebab restaurant in Korea. We serve you the finest dishes from Turkish",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#1f2937",
+	"theme_color": "#1f2937",
+	"orientation": "portrait-primary",
+	"scope": "/",
+	"lang": "ko",
+	"categories": ["food", "restaurant", "lifestyle"],
+	"icons": [
+		{
+			"src": "/workinghours.jpg",
+			"sizes": "192x192",
+			"type": "image/jpeg",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/workinghours.jpg",
+			"sizes": "512x512",
+			"type": "image/jpeg",
+			"purpose": "any maskable"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/workinghours.jpg",
+			"sizes": "1280x720",
+			"type": "image/jpeg",
+			"form_factor": "wide"
+		}
+	]
+}
