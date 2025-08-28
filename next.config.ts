@@ -25,6 +25,17 @@ const nextConfig: NextConfig = {
 		},
 	],
 	poweredByHeader: false,
+	// Add output configuration for static export if needed
+	output: 'standalone',
+	// Ensure images are optimized
+	images: {
+		domains: ['localhost', 'your-backend-domain.com'],
+		unoptimized: false,
+	},
+	// Add experimental features for better performance
+	experimental: {
+		optimizeCss: true,
+	},
 }
 
 export default nextConfig
