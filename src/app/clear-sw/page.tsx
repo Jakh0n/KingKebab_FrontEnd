@@ -35,7 +35,7 @@ export default function ClearSWPage() {
 						Service Worker Debug
 					</h1>
 					<p className='text-gray-400'>
-						This page helps clear service workers and caches if you're
+						This page helps clear service workers and caches if you&apos;re
 						experiencing issues.
 					</p>
 
