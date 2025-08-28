@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { clearAllCaches, unregisterServiceWorkers } from '@/lib/utils'
 import { useState } from 'react'
 
 export default function ClearSWPage() {
@@ -14,10 +13,22 @@ export default function ClearSWPage() {
 		setMessage('')
 
 		try {
-			await unregisterServiceWorkers()
-			await clearAllCaches()
+			// Clear service workers
+			if ('serviceWorker' in navigator) {
+				const registrations = await navigator.serviceWorker.getRegistrations()
+				for (const registration of registrations) {
+					await registration.unregister()
+				}
+			}
+
+			// Clear caches
+			if ('caches' in window) {
+				const cacheNames = await caches.keys()
+				await Promise.all(cacheNames.map(name => caches.delete(name)))
+			}
+
 			setMessage(
-				'Service workers unregistered and caches cleared successfully! Please refresh the page.'
+				'Service workers and caches cleared successfully! Please refresh the page.'
 			)
 		} catch (error) {
 			console.error('Error:', error)

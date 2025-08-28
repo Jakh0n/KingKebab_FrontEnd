@@ -1,7 +1,6 @@
 'use client'
 
 import { EditTimeEntryModal } from '@/components/EditTimeEntryModal'
-import { ServiceWorkerDebug } from '@/components/ServiceWorkerDebug'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -1123,9 +1122,6 @@ export default function DashboardPage() {
 					entry={editingEntry}
 					onUpdate={handleEntryUpdate}
 				/>
-
-				{/* Service Worker Debug Component */}
-				<ServiceWorkerDebug />
 			</div>
 		</main>
 	)

@@ -4,30 +4,14 @@ import { useEffect } from 'react'
 
 export function ServiceWorkerRegistration() {
 	useEffect(() => {
+		// Completely disable service worker to fix routing issues
 		if ('serviceWorker' in navigator) {
-			// Unregister any existing service workers first
-			navigator.serviceWorker
-				.getRegistrations()
-				.then(registrations => {
-					registrations.forEach(registration => {
-						registration.unregister()
-					})
+			// Unregister ALL existing service workers
+			navigator.serviceWorker.getRegistrations().then(registrations => {
+				registrations.forEach(registration => {
+					registration.unregister()
 				})
-				.then(() => {
-					// Register the improved service worker
-					window.addEventListener('load', () => {
-						navigator.serviceWorker
-							.register('/sw.js', {
-								updateViaCache: 'none',
-							})
-							.then(registration => {
-								console.log('SW registered: ', registration)
-							})
-							.catch(registrationError => {
-								console.log('SW registration failed: ', registrationError)
-							})
-					})
-				})
+			})
 		}
 	}, [])
 
