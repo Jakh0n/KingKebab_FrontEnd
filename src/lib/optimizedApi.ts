@@ -8,30 +8,7 @@ import {
 } from '@/types'
 import Cookies from 'js-cookie'
 
-// Determine API URL based on environment
-const getApiUrl = () => {
-	// If environment variable is set, use it
-	if (process.env.NEXT_PUBLIC_API_URL) {
-		return process.env.NEXT_PUBLIC_API_URL
-	}
-
-	// If running in browser, check if we're on localhost
-	if (typeof window !== 'undefined') {
-		const hostname = window.location.hostname
-		if (hostname === 'localhost' || hostname === '127.0.0.1') {
-			return 'http://localhost:5000/api'
-		}
-		// For production, you need to set NEXT_PUBLIC_API_URL
-		console.warn(
-			'NEXT_PUBLIC_API_URL not set. Please configure your backend URL.'
-		)
-		return 'http://localhost:5000/api' // fallback
-	}
-
-	return 'http://localhost:5000/api' // server-side fallback
-}
-
-const API_URL = getApiUrl()
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 // Simple cache interface without external dependencies
 interface CacheItem<T> {
