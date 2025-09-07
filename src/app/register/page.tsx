@@ -16,7 +16,9 @@ export default function RegisterPage() {
 	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')
 	const [employeeId, setEmployeeId] = useState('')
-	const [position, setPosition] = useState<'worker' | 'rider'>('worker')
+	const [position, setPosition] = useState<'worker' | 'rider' | 'monthly'>(
+		'worker'
+	)
 	const [error, setError] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
 	const router = useRouter()
@@ -115,7 +117,9 @@ export default function RegisterPage() {
 										value='worker'
 										checked={position === 'worker'}
 										onChange={e =>
-											setPosition(e.target.value as 'worker' | 'rider')
+											setPosition(
+												e.target.value as 'worker' | 'rider' | 'monthly'
+											)
 										}
 										className='form-radio'
 										disabled={isLoading}
@@ -129,12 +133,30 @@ export default function RegisterPage() {
 										value='rider'
 										checked={position === 'rider'}
 										onChange={e =>
-											setPosition(e.target.value as 'worker' | 'rider')
+											setPosition(
+												e.target.value as 'worker' | 'rider' | 'monthly'
+											)
 										}
 										className='form-radio'
 										disabled={isLoading}
 									/>
 									<span>Rider</span>
+								</label>
+								<label className='flex items-center space-x-2'>
+									<input
+										type='radio'
+										name='position'
+										value='monthly'
+										checked={position === 'monthly'}
+										onChange={e =>
+											setPosition(
+												e.target.value as 'worker' | 'rider' | 'monthly'
+											)
+										}
+										className='form-radio'
+										disabled={isLoading}
+									/>
+									<span>Monthly</span>
 								</label>
 							</div>
 						</div>

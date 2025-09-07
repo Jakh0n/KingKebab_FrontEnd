@@ -232,8 +232,13 @@ export default function AdminPage() {
 	const handleDownloadExcel = () => {
 		console.log('Worker Stats before Excel:', Object.values(workerStats))
 
-		// Workers statistics in English
-		const excelData = Object.values(workerStats).map(worker => {
+		// Filter out monthly users - only include worker and rider positions
+		const regularWorkers = Object.values(workerStats).filter(
+			worker => worker.position === 'worker' || worker.position === 'rider'
+		)
+
+		// Workers statistics in English (excluding monthly users)
+		const excelData = regularWorkers.map(worker => {
 			console.log('Processing worker:', worker)
 			return {
 				'Employee ID': worker.employeeId || 'N/A',
@@ -261,6 +266,49 @@ export default function AdminPage() {
 			months[selectedMonth - 1]
 		}_${selectedYear}.xlsx`
 		XLSX.writeFile(wb, fileName)
+	}
+
+	const handleDownloadMonthlyExcel = () => {
+		// Filter only monthly users
+		const monthlyWorkers = Object.values(workerStats).filter(
+			worker => worker.position === 'monthly'
+		)
+
+		if (monthlyWorkers.length === 0) {
+			toast.error('No monthly users found for this period')
+			return
+		}
+
+		// Monthly workers statistics in English
+		const excelData = monthlyWorkers.map(worker => {
+			return {
+				'Employee ID': worker.employeeId || 'N/A',
+				'Employee Name': worker.username,
+				'Total Hours': worker.totalHours,
+				'Total Days': worker.regularDays + worker.overtimeDays,
+				'Regular Days': worker.regularDays,
+				'Overtime Days': worker.overtimeDays,
+				Position: 'Monthly',
+			}
+		})
+
+		const ws = XLSX.utils.json_to_sheet(excelData)
+		const wb = XLSX.utils.book_new()
+		XLSX.utils.book_append_sheet(
+			wb,
+			ws,
+			`Monthly Users - ${months[selectedMonth - 1]} ${selectedYear}`
+		)
+
+		// Create filename with selected month and year for monthly users only
+		const fileName = `King_Kebab_Monthly_Users_${
+			months[selectedMonth - 1]
+		}_${selectedYear}.xlsx`
+		XLSX.writeFile(wb, fileName)
+
+		toast.success(
+			`Monthly users data downloaded (${monthlyWorkers.length} users)`
+		)
 	}
 
 	if (loading) {
@@ -360,7 +408,14 @@ export default function AdminPage() {
 									onClick={handleDownloadExcel}
 								>
 									<Download className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
-									<span>Download Excel</span>
+									<span>Download Excel (All)</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									className='hover:bg-[#2A3447] cursor-pointer group'
+									onClick={handleDownloadMonthlyExcel}
+								>
+									<CalendarDays className='mr-2 h-4 w-4 text-purple-400 group-hover:text-purple-400/80' />
+									<span>Download Monthly Users</span>
 								</DropdownMenuItem>
 								<DropdownMenuItem className='hover:bg-[#2A3447] cursor-pointer group'>
 									<Settings className='mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80' />
@@ -380,7 +435,7 @@ export default function AdminPage() {
 				</div>
 
 				{/* Stats Grid */}
-				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
+				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
 					<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300'>
 						<div className='flex items-center gap-3'>
 							<div className='bg-[#4E7BEE]/10 p-3 rounded-xl'>
@@ -428,6 +483,23 @@ export default function AdminPage() {
 							</div>
 						</div>
 					</Card>
+					<Card className='bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300'>
+						<div className='flex items-center gap-3'>
+							<div className='bg-purple-500/10 p-3 rounded-xl'>
+								<CalendarDays className='w-6 h-6 text-purple-400' />
+							</div>
+							<div className='flex-1'>
+								<h3 className='text-gray-400 text-sm mb-1'>Monthly</h3>
+								<p className='text-2xl font-bold text-purple-400'>
+									{
+										Object.values(workerStats).filter(
+											w => w.position === 'monthly'
+										).length
+									}
+								</p>
+							</div>
+						</div>
+					</Card>
 				</div>
 
 				{/* Main Content */}
@@ -466,14 +538,28 @@ export default function AdminPage() {
 												<h2 className='text-base sm:text-lg font-semibold mb-0.5 sm:mb-1 flex items-center gap-2'>
 													{worker.position === 'worker' ? (
 														<ChefHat size={16} className='text-[#4CC4C0]' />
-													) : (
+													) : worker.position === 'rider' ? (
 														<Bike size={16} className='text-[#9B5DE5]' />
+													) : (
+														<CalendarDays
+															size={16}
+															className='text-purple-400'
+														/>
 													)}
 													{worker.username}
 												</h2>
-												<p className='text-gray-400 text-xs sm:text-sm'>
-													{worker.position === 'worker' ? 'Worker' : 'Rider'}
-												</p>
+												<div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3'>
+													<p className='text-gray-400 text-xs sm:text-sm'>
+														{worker.position === 'worker'
+															? 'Worker'
+															: worker.position === 'rider'
+															? 'Rider'
+															: 'Monthly'}
+													</p>
+													<span className='px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded border border-[#4E7BEE]/20'>
+														ID: {worker.employeeId || 'N/A'}
+													</span>
+												</div>
 											</div>
 											<div className='bg-[#4E7BEE]/10 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5'>
 												<Clock size={12} className='text-[#4E7BEE]' />
