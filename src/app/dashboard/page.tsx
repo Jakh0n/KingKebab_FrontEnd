@@ -305,47 +305,19 @@ export default function DashboardPage() {
 				}
 
 				const newEntry = await addTimeEntry(data)
-				setEntries([...entries, newEntry])
 
-				// Telegram botga xabar yuborish
-				try {
-					// Chat ID array
-					const chatIds = ['6808924520', '158467590'] // Add second chat ID here
-
-					// Send message to each chat ID
-					await Promise.all(
-						chatIds.map(chatId =>
-							fetch(
-								`https://api.telegram.org/bot${process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN}/sendMessage`,
-								{
-									method: 'POST',
-									headers: {
-										'Content-Type': 'application/json',
-									},
-									body: JSON.stringify({
-										chat_id: chatId,
-										text: `🔔 *New time entry added!*\n\n👤 *Employee:* ${
-											userData?.username
-										}\n📅 *Date:* ${data.date}\n⏰ *Start time:* ${
-											formData.startTime
-										}\n🏁 *End time:* ${formData.endTime}${
-											data.overtimeReason
-												? `\n⚠️ *Overtime reason:* ${data.overtimeReason}`
-												: ''
-										}${
-											data.responsiblePerson
-												? `\n👨‍💼 *Responsible person:* ${data.responsiblePerson}`
-												: ''
-										}`,
-										parse_mode: 'Markdown',
-									}),
-								}
-							)
-						)
-					)
-				} catch (error) {
-					console.error('Error sending Telegram message:', error)
+				// Format the new entry to match existing entries format
+				const formattedEntry = {
+					...newEntry,
+					date: new Date(newEntry.date).toISOString().split('T')[0],
+					startTime: new Date(newEntry.startTime).toISOString(),
+					endTime: new Date(newEntry.endTime).toISOString(),
+					hours: Number(newEntry.hours.toFixed(1)),
 				}
+
+				setEntries([...entries, formattedEntry])
+
+				// Telegram notifications are now handled by the backend automatically
 
 				// Formani tozalash
 				setFormData({
@@ -367,7 +339,7 @@ export default function DashboardPage() {
 				setLoading(false)
 			}
 		},
-		[selectedDate, formData, isOvertime, entries, userData]
+		[selectedDate, formData, isOvertime, entries]
 	)
 
 	// Vaqtlarni formatlash
