@@ -18,6 +18,7 @@ import {
 	getMyTimeEntries,
 	logout,
 } from '@/lib/api'
+import { notifyTimeEntry } from '@/lib/telegramNotifications'
 import { TimeEntry, TimeEntryFormData } from '@/types'
 import {
 	AlertTriangle,
@@ -317,7 +318,26 @@ export default function DashboardPage() {
 
 				setEntries([...entries, formattedEntry])
 
-				// Telegram notifications are now handled by the backend automatically
+				// Send Telegram notification from frontend
+				if (userData) {
+					try {
+						await notifyTimeEntry(
+							{
+								user: userData,
+								date: data.date,
+								startTime: data.startTime,
+								endTime: data.endTime,
+								hours: formattedEntry.hours,
+								overtimeReason: data.overtimeReason,
+								responsiblePerson: data.responsiblePerson,
+							},
+							'added'
+						)
+					} catch (telegramError) {
+						console.log('Telegram notification failed:', telegramError)
+						// Don't show error to user - notifications are optional
+					}
+				}
 
 				// Formani tozalash
 				setFormData({
@@ -339,7 +359,7 @@ export default function DashboardPage() {
 				setLoading(false)
 			}
 		},
-		[selectedDate, formData, isOvertime, entries]
+		[selectedDate, formData, isOvertime, entries, userData]
 	)
 
 	// Vaqtlarni formatlash
