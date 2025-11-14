@@ -24,7 +24,9 @@ import {
 	addTimeEntry,
 	deleteTimeEntry,
 	getMyTimeEntries,
+	getUserProfile,
 	logout,
+	updateUserProfile,
 } from '@/lib/api'
 import { notifyTimeEntry } from '@/lib/telegramNotifications'
 import { TimeEntry, TimeEntryFormData } from '@/types'
@@ -62,6 +64,7 @@ export default function DashboardPage() {
 		username: string
 		position: string
 		employeeId?: string
+		hourlyWage?: number
 	} | null>(null)
 	const [formData, setFormData] = useState<TimeEntryFormData>({
 		startTime: '',
@@ -82,6 +85,9 @@ export default function DashboardPage() {
 	const [currentPage, setCurrentPage] = useState(1)
 	const [isListening, setIsListening] = useState(false)
 	const [speechSupported, setSpeechSupported] = useState(false)
+	const [isWageModalOpen, setIsWageModalOpen] = useState(false)
+	const [hourlyWageInput, setHourlyWageInput] = useState('')
+	const [updatingWage, setUpdatingWage] = useState(false)
 
 	// Soatlarni hisoblash funksiyasi - backend bilan mos kelishi uchun
 	const calculateHours = useCallback(
@@ -172,6 +178,20 @@ export default function DashboardPage() {
 			position: payload.position,
 			employeeId: payload.employeeId,
 		})
+
+		// Load user profile to get hourly wage
+		const loadUserProfile = async () => {
+			try {
+				const profile = await getUserProfile()
+				setUserData(prev => ({
+					...prev!,
+					hourlyWage: profile.hourlyWage || 0,
+				}))
+			} catch (error) {
+				console.log('Could not load user profile:', error)
+			}
+		}
+		loadUserProfile()
 
 		loadEntries()
 	}, [router, loadEntries])
@@ -630,6 +650,71 @@ export default function DashboardPage() {
 		}
 	}, [entries, selectedMonth, selectedYear, currentPage])
 
+	// Daromadni hisoblash
+	const totalEarnings = useMemo(() => {
+		if (!userData?.hourlyWage || userData.hourlyWage === 0) return 0
+
+		const filteredEntriesForMonth = entries.filter(entry => {
+			const entryDate = new Date(entry.date)
+			return (
+				entryDate.getMonth() + 1 === selectedMonth &&
+				entryDate.getFullYear() === selectedYear
+			)
+		})
+
+		const totalHours = filteredEntriesForMonth.reduce((sum, entry) => {
+			return sum + Number(entry.hours.toFixed(1))
+		}, 0)
+
+		return totalHours * userData.hourlyWage
+	}, [entries, selectedMonth, selectedYear, userData?.hourlyWage])
+
+	// Format number with commas for Korean Won
+	const formatKRW = (amount: number) => {
+		return new Intl.NumberFormat('ko-KR', {
+			style: 'currency',
+			currency: 'KRW',
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		}).format(amount)
+	}
+
+	// Soatlik ish haqqini yangilash
+	const handleUpdateWage = useCallback(async () => {
+		const wageValue = parseFloat(hourlyWageInput)
+		if (isNaN(wageValue) || wageValue < 0) {
+			toast.error("Iltimos, to'g'ri qiymat kiriting")
+			return
+		}
+
+		try {
+			setUpdatingWage(true)
+			const updatedProfile = await updateUserProfile({
+				hourlyWage: wageValue,
+			})
+
+			setUserData(prev => ({
+				...prev!,
+				hourlyWage: updatedProfile.hourlyWage || 0,
+			}))
+
+			setIsWageModalOpen(false)
+			setHourlyWageInput('')
+			toast.success('Soatlik ish haqqi yangilandi!')
+		} catch (error) {
+			console.error('Error updating wage:', error)
+			toast.error('Ish haqqini yangilashda xatolik yuz berdi')
+		} finally {
+			setUpdatingWage(false)
+		}
+	}, [hourlyWageInput])
+
+	// Modal ochilganda joriy qiymatni ko'rsatish
+	const handleOpenWageModal = useCallback(() => {
+		setHourlyWageInput(userData?.hourlyWage?.toString() || '')
+		setIsWageModalOpen(true)
+	}, [userData?.hourlyWage])
+
 	// Oylar ro'yxati
 	const months = useMemo(
 		() => [
@@ -866,7 +951,7 @@ export default function DashboardPage() {
 					</Card>
 
 					{/* Statistika */}
-					<div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
 						<Card className='bg-[#0E1422] border-none text-white p-4'>
 							<div className='flex items-center gap-3'>
 								<div className='bg-[#4E7BEE]/10 p-3 rounded-lg'>
@@ -906,6 +991,35 @@ export default function DashboardPage() {
 										{stats.overtimeDays}d
 									</p>
 								</div>
+							</div>
+						</Card>
+
+						<Card
+							className='bg-[#0E1422] border-none text-white p-4 cursor-pointer hover:bg-[#1A1F2E] transition-colors'
+							onClick={handleOpenWageModal}
+						>
+							<div className='flex items-center gap-3'>
+								<div className='bg-[#10B981]/10 p-3 rounded-lg'>
+									<span className='text-2xl'>💰</span>
+								</div>
+								<div className='flex-1'>
+									<p className='text-gray-400 text-sm'>Total Earnings</p>
+									{userData?.hourlyWage && userData.hourlyWage > 0 ? (
+										<>
+											<p className='text-xl font-semibold text-[#10B981]'>
+												{formatKRW(totalEarnings)}
+											</p>
+											<p className='text-xs text-gray-500 mt-1'>
+												{userData.hourlyWage.toLocaleString('ko-KR')} KRW/hour
+											</p>
+										</>
+									) : (
+										<p className='text-sm text-gray-500 mt-1'>
+											Soatlik ish haqqini kiriting
+										</p>
+									)}
+								</div>
+								<Pencil className='w-4 h-4 text-gray-400' />
 							</div>
 						</Card>
 					</div>
@@ -1376,6 +1490,75 @@ export default function DashboardPage() {
 					entry={editingEntry}
 					onUpdate={handleEntryUpdate}
 				/>
+
+				{/* Soatlik Ish Haqqi Modal */}
+				<Dialog open={isWageModalOpen} onOpenChange={setIsWageModalOpen}>
+					<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
+						<DialogHeader>
+							<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
+								<span className='text-2xl'>💰</span>
+								Soatlik Ish Haqqi (KRW)
+							</DialogTitle>
+							<DialogDescription className='text-gray-400'>
+								Koreya wonida soatlik ish haqqingizni kiriting
+							</DialogDescription>
+						</DialogHeader>
+						<div className='space-y-4 mt-4'>
+							<div className='space-y-2'>
+								<Label className='text-sm text-gray-300'>
+									Soatlik Ish Haqqi
+								</Label>
+								<Input
+									type='number'
+									min='0'
+									step='100'
+									value={hourlyWageInput}
+									onChange={e => setHourlyWageInput(e.target.value)}
+									placeholder='Masalan: 10000'
+									className='bg-[#0E1422] border-[#4E7BEE]/40 text-white placeholder:text-gray-500 focus:border-[#4E7BEE]'
+									onKeyPress={e => {
+										if (e.key === 'Enter') {
+											handleUpdateWage()
+										}
+									}}
+								/>
+								<p className='text-xs text-gray-500'>
+									Joriy qiymat:{' '}
+									{userData?.hourlyWage
+										? `${userData.hourlyWage.toLocaleString('ko-KR')} KRW`
+										: 'Kiritilmagan'}
+								</p>
+							</div>
+							<div className='flex justify-end gap-2 pt-2'>
+								<Button
+									variant='outline'
+									onClick={() => {
+										setIsWageModalOpen(false)
+										setHourlyWageInput('')
+									}}
+									className='border-[#4E7BEE]/40 text-gray-300 hover:bg-[#0E1422]'
+									disabled={updatingWage}
+								>
+									Bekor qilish
+								</Button>
+								<Button
+									onClick={handleUpdateWage}
+									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
+									disabled={updatingWage}
+								>
+									{updatingWage ? (
+										<>
+											<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2'></div>
+											Saqlanmoqda...
+										</>
+									) : (
+										'Saqlash'
+									)}
+								</Button>
+							</div>
+						</div>
+					</DialogContent>
+				</Dialog>
 			</div>
 		</main>
 	)

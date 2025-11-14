@@ -74,6 +74,7 @@ export default function UserProfile() {
 		department: '',
 		photoUrl: '',
 		hireDate: '',
+		hourlyWage: 0,
 		skills: [] as string[],
 		emergencyContact: {
 			name: '',
@@ -239,6 +240,7 @@ export default function UserProfile() {
 				department: userData.department || '',
 				photoUrl: userData.photoUrl || '',
 				hireDate: userData.hireDate || '',
+				hourlyWage: savedProfile.hourlyWage || userData.hourlyWage || 0,
 				skills: userData.skills || [],
 				emergencyContact: {
 					name: userData.emergencyContact?.name || '',
@@ -267,6 +269,7 @@ export default function UserProfile() {
 					department: apiUserData.department || '',
 					photoUrl: finalPhotoUrl,
 					hireDate: apiUserData.hireDate || '',
+					hourlyWage: apiUserData.hourlyWage || 0,
 					skills: apiUserData.skills || [],
 					emergencyContact: {
 						name: apiUserData.emergencyContact?.name || '',
@@ -839,6 +842,32 @@ export default function UserProfile() {
 															className='bg-slate-900/60 border-blue-600/40 text-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
 														/>
 													</div>
+													<div className='space-y-2'>
+														<Label
+															htmlFor='hourlyWage'
+															className='text-sm text-blue-200 font-medium'
+														>
+															💰 Soatlik Ish Haqqi (KRW)
+														</Label>
+														<Input
+															id='hourlyWage'
+															type='number'
+															min='0'
+															step='100'
+															value={formData.hourlyWage || 0}
+															onChange={e =>
+																setFormData(prev => ({
+																	...prev,
+																	hourlyWage: parseFloat(e.target.value) || 0,
+																}))
+															}
+															placeholder='Masalan: 10000'
+															className='bg-slate-900/60 border-blue-600/40 text-white placeholder:text-blue-300/60 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl h-10 shadow-inner backdrop-blur-sm'
+														/>
+														<p className='text-xs text-blue-300/70'>
+															Koreya wonida kiriting (masalan: 10000)
+														</p>
+													</div>
 												</div>
 												<div className='space-y-2'>
 													<Label
@@ -1104,6 +1133,7 @@ export default function UserProfile() {
 															department: user?.department || '',
 															photoUrl: user?.photoUrl || '',
 															hireDate: user?.hireDate || '',
+															hourlyWage: user?.hourlyWage || 0,
 															skills: user?.skills || [],
 															emergencyContact: {
 																name: user?.emergencyContact?.name || '',

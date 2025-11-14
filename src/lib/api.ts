@@ -2,9 +2,15 @@ import {
 	Announcement,
 	ApiError,
 	AuthResponse,
+	Branch,
+	BranchFormData,
+	Schedule,
+	ScheduleConflict,
+	ScheduleFormData,
 	TimeEntry,
 	TimeEntryFormData,
 	User,
+	WeeklyScheduleData,
 } from '@/types'
 import Cookies from 'js-cookie'
 
@@ -449,6 +455,7 @@ export async function updateUserProfile(data: {
 	department?: string
 	photoUrl?: string
 	hireDate?: string
+	hourlyWage?: number
 	skills?: string[]
 	emergencyContact?: {
 		name: string
@@ -503,4 +510,321 @@ export async function uploadProfileImage(file: File): Promise<{
 	result.imageUrl = `${baseUrl}${result.imageUrl}`
 
 	return result
+}
+
+// ================================
+// Branch Management API Functions
+// ================================
+
+export async function getAllBranches(
+	includeInactive = false
+): Promise<Branch[]> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const params = new URLSearchParams()
+	if (includeInactive) params.append('includeInactive', 'true')
+
+	const response = await fetch(`${API_URL}/branches?${params}`, {
+		method: 'GET',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<Branch[]>(response)
+}
+
+export async function getBranch(id: string): Promise<Branch> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/branches/${id}`, {
+		method: 'GET',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<Branch>(response)
+}
+
+export async function createBranch(
+	data: BranchFormData
+): Promise<{ message: string; branch: Branch }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	if (
+		!data.name ||
+		!data.code ||
+		!data.location.address ||
+		!data.location.city
+	) {
+		throw new Error('Name, code, address, and city are required')
+	}
+
+	const response = await fetch(`${API_URL}/branches`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+	return handleResponse<{ message: string; branch: Branch }>(response)
+}
+
+export async function updateBranch(
+	id: string,
+	data: BranchFormData
+): Promise<{ message: string; branch: Branch }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/branches/${id}`, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+	return handleResponse<{ message: string; branch: Branch }>(response)
+}
+
+export async function deleteBranch(id: string): Promise<{ message: string }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/branches/${id}`, {
+		method: 'DELETE',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<{ message: string }>(response)
+}
+
+export async function getActiveBranches(): Promise<Branch[]> {
+	const response = await fetch(`${API_URL}/branches/public/active`, {
+		method: 'GET',
+	})
+	return handleResponse<Branch[]>(response)
+}
+
+export async function getAllUsers(): Promise<User[]> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/users`, {
+		method: 'GET',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<User[]>(response)
+}
+
+// =================================
+// Schedule Management API Functions
+// =================================
+
+export async function getSchedules(params: {
+	startDate?: string
+	endDate?: string
+	branchId?: string
+	workerId?: string
+	status?: string
+	shiftType?: string
+	page?: number
+	limit?: number
+}): Promise<{
+	schedules: Schedule[]
+	pagination: {
+		page: number
+		limit: number
+		total: number
+		pages: number
+	}
+}> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const searchParams = new URLSearchParams()
+	Object.entries(params).forEach(([key, value]) => {
+		if (value !== undefined) {
+			searchParams.append(key, value.toString())
+		}
+	})
+
+	const response = await fetch(`${API_URL}/schedules?${searchParams}`, {
+		method: 'GET',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<{
+		schedules: Schedule[]
+		pagination: {
+			page: number
+			limit: number
+			total: number
+			pages: number
+		}
+	}>(response)
+}
+
+export async function getSchedule(id: string): Promise<Schedule> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/schedules/${id}`, {
+		method: 'GET',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<Schedule>(response)
+}
+
+export async function createSchedule(
+	data: ScheduleFormData
+): Promise<{ message: string; schedule: Schedule; recurringCount?: number }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	if (
+		!data.branchId ||
+		!data.workerId ||
+		!data.startTime ||
+		!data.endTime ||
+		!data.shiftType ||
+		!data.role ||
+		!data.duration ||
+		!data.workingDays ||
+		data.workingDays.length === 0
+	) {
+		throw new Error(
+			'Branch, worker, start time, end time, shift type, role, duration, and working days are required'
+		)
+	}
+
+	const response = await fetch(`${API_URL}/schedules`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+	return handleResponse<{
+		message: string
+		schedule: Schedule
+		recurringCount?: number
+	}>(response)
+}
+
+export async function updateSchedule(
+	id: string,
+	data: Partial<ScheduleFormData>
+): Promise<{ message: string; schedule: Schedule }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/schedules/${id}`, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(data),
+	})
+	return handleResponse<{ message: string; schedule: Schedule }>(response)
+}
+
+export async function deleteSchedule(id: string): Promise<{ message: string }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/schedules/${id}`, {
+		method: 'DELETE',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<{ message: string }>(response)
+}
+
+export async function confirmSchedule(
+	id: string
+): Promise<{ message: string; schedule: Schedule }> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const response = await fetch(`${API_URL}/schedules/${id}/confirm`, {
+		method: 'PATCH',
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	})
+	return handleResponse<{ message: string; schedule: Schedule }>(response)
+}
+
+export async function checkScheduleConflicts(params: {
+	workerId: string
+	startDate: string
+	endDate?: string
+	startTime: string
+	endTime: string
+}): Promise<{
+	hasConflicts: boolean
+	conflicts: ScheduleConflict[]
+}> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const searchParams = new URLSearchParams()
+	Object.entries(params).forEach(([key, value]) => {
+		if (value !== undefined) {
+			searchParams.append(key, value.toString())
+		}
+	})
+
+	const response = await fetch(
+		`${API_URL}/schedules/conflicts/check?${searchParams}`,
+		{
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		}
+	)
+	return handleResponse<{
+		hasConflicts: boolean
+		conflicts: ScheduleConflict[]
+	}>(response)
+}
+
+export async function getWeeklySchedule(
+	year: number,
+	week: number,
+	branchId?: string,
+	shiftType?: string
+): Promise<WeeklyScheduleData> {
+	const token = localStorage.getItem('token')
+	if (!token) throw new Error('Not authenticated')
+
+	const params = new URLSearchParams()
+	if (branchId) params.append('branchId', branchId)
+	if (shiftType) params.append('shiftType', shiftType)
+
+	const response = await fetch(
+		`${API_URL}/schedules/weekly/${year}/${week}?${params}`,
+		{
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		}
+	)
+	return handleResponse<WeeklyScheduleData>(response)
 }
