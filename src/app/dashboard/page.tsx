@@ -1532,23 +1532,21 @@ export default function DashboardPage() {
 					onUpdate={handleEntryUpdate}
 				/>
 
-				{/* Soatlik Ish Haqqi Modal */}
+				{/* Hourly Wage Modal */}
 				<Dialog open={isWageModalOpen} onOpenChange={setIsWageModalOpen}>
 					<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
 						<DialogHeader>
 							<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
 								<span className='text-2xl'>💰</span>
-								Soatlik Ish Haqqi (KRW)
+								Hourly Wage (KRW)
 							</DialogTitle>
 							<DialogDescription className='text-gray-400'>
-								Koreya wonida soatlik ish haqqingizni kiriting
+								Enter your hourly wage in Korean Won
 							</DialogDescription>
 						</DialogHeader>
 						<div className='space-y-4 mt-4'>
 							<div className='space-y-2'>
-								<Label className='text-sm text-gray-300'>
-									Soatlik Ish Haqqi
-								</Label>
+								<Label className='text-sm text-gray-300'>Hourly Wage</Label>
 								<Input
 									type='number'
 									min='0'
@@ -1556,16 +1554,16 @@ export default function DashboardPage() {
 									value={hourlyWageInput}
 									onChange={e => {
 										const value = e.target.value
-										// Agar bo'sh bo'lsa yoki faqat 0 bo'lsa, bo'sh qoldirish
+										// If empty or only 0, leave empty
 										if (value === '' || value === '0') {
 											setHourlyWageInput('')
 										} else {
-											// Oldingi nollarni olib tashlash va faqat raqamlarni qoldirish
+											// Remove leading zeros and keep only numbers
 											const numericValue = value.replace(/^0+/, '') || ''
 											setHourlyWageInput(numericValue)
 										}
 									}}
-									placeholder='Masalan: 10000'
+									placeholder='Example: 10000'
 									className='bg-[#0E1422] border-[#4E7BEE]/40 text-white placeholder:text-gray-500 focus:border-[#4E7BEE]'
 									onKeyPress={e => {
 										if (e.key === 'Enter') {
@@ -1574,10 +1572,10 @@ export default function DashboardPage() {
 									}}
 								/>
 								<p className='text-xs text-gray-500'>
-									Joriy qiymat:{' '}
+									Current value:{' '}
 									{userData?.hourlyWage
 										? `${userData.hourlyWage.toLocaleString('ko-KR')} KRW`
-										: 'Kiritilmagan'}
+										: 'Not set'}
 								</p>
 							</div>
 							<div className='flex justify-end gap-2 pt-2'>
@@ -1585,30 +1583,34 @@ export default function DashboardPage() {
 									variant='outline'
 									onClick={() => {
 										setIsWageModalOpen(false)
-										// Modal yopilganda inputni tozalash
+										// Clear input when modal closes
 										if (userData?.hourlyWage && userData.hourlyWage > 0) {
 											setHourlyWageInput(userData.hourlyWage.toString())
 										} else {
 											setHourlyWageInput('')
 										}
 									}}
-									className='border-[#4E7BEE]/40 text-gray-300 hover:bg-[#0E1422]'
+									className='bg-gray-600/20 border-gray-500/50 text-gray-300 hover:bg-gray-600/40 hover:border-gray-400/70 hover:text-white transition-all duration-200'
 									disabled={updatingWage}
 								>
-									Bekor qilish
+									<XCircle className='w-4 h-4 mr-2' />
+									Cancel
 								</Button>
 								<Button
 									onClick={handleUpdateWage}
-									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white'
+									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white transition-all duration-200'
 									disabled={updatingWage}
 								>
 									{updatingWage ? (
 										<>
 											<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2'></div>
-											Saqlanmoqda...
+											Saving...
 										</>
 									) : (
-										'Saqlash'
+										<>
+											<CheckCircle2 className='w-4 h-4 mr-2' />
+											Save
+										</>
 									)}
 								</Button>
 							</div>
