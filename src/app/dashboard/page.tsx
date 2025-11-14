@@ -72,6 +72,7 @@ export default function DashboardPage() {
 		date: new Date().toISOString().split('T')[0],
 		overtimeReason: null,
 		responsiblePerson: '',
+		latePerson: '',
 	})
 	const [selectedDate, setSelectedDate] = useState(new Date())
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
@@ -326,6 +327,9 @@ export default function DashboardPage() {
 					) {
 						throw new Error('Please select a responsible person')
 					}
+					if (overtimeReason === 'Late Arrival' && !formData.latePerson) {
+						throw new Error('Please enter who was late')
+					}
 					responsiblePerson = formData.responsiblePerson || ''
 				}
 
@@ -335,6 +339,10 @@ export default function DashboardPage() {
 					date: selectedDate.toISOString().split('T')[0],
 					overtimeReason,
 					responsiblePerson,
+					latePerson:
+						isOvertime && overtimeReason === 'Late Arrival'
+							? formData.latePerson
+							: '',
 				}
 
 				const newEntry = await addTimeEntry(data)
@@ -362,6 +370,7 @@ export default function DashboardPage() {
 								hours: formattedEntry.hours,
 								overtimeReason: data.overtimeReason,
 								responsiblePerson: data.responsiblePerson,
+								latePerson: data.latePerson,
 							},
 							'added'
 						)
@@ -378,6 +387,7 @@ export default function DashboardPage() {
 					date: new Date().toISOString().split('T')[0],
 					overtimeReason: null,
 					responsiblePerson: '',
+					latePerson: '',
 				})
 
 				// Loading holatini o'zgartirish
@@ -711,7 +721,11 @@ export default function DashboardPage() {
 
 	// Modal ochilganda joriy qiymatni ko'rsatish
 	const handleOpenWageModal = useCallback(() => {
-		setHourlyWageInput(userData?.hourlyWage?.toString() || '')
+		if (userData?.hourlyWage && userData.hourlyWage > 0) {
+			setHourlyWageInput(userData.hourlyWage.toString())
+		} else {
+			setHourlyWageInput('')
+		}
 		setIsWageModalOpen(true)
 	}, [userData?.hourlyWage])
 
@@ -1152,6 +1166,10 @@ export default function DashboardPage() {
 																e.target.value === 'Company Request'
 																	? formData.responsiblePerson
 																	: '',
+															latePerson:
+																e.target.value === 'Late Arrival'
+																	? formData.latePerson
+																	: '',
 														})
 													}
 													className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
@@ -1163,6 +1181,7 @@ export default function DashboardPage() {
 													<option value='Company Request'>
 														Company Request
 													</option>
+													<option value='Late Arrival'>Late Arrival</option>
 												</select>
 											</div>
 
@@ -1188,6 +1207,28 @@ export default function DashboardPage() {
 														<option value='Adilcan'>Adilcan</option>
 														<option value='Boss'>Boss</option>
 													</select>
+												</div>
+											)}
+
+											{formData.overtimeReason === 'Late Arrival' && (
+												<div className='space-y-2'>
+													<Label className='text-sm flex items-center gap-1.5'>
+														<User className='w-4 h-4 text-gray-400' />
+														Who was late?
+													</Label>
+													<Input
+														type='text'
+														value={formData.latePerson || ''}
+														onChange={e =>
+															setFormData({
+																...formData,
+																latePerson: e.target.value,
+															})
+														}
+														placeholder='Enter name of person who was late'
+														className='bg-[#1A1F2E] border-none text-white text-sm h-10'
+														required
+													/>
 												</div>
 											)}
 										</div>
@@ -1513,7 +1554,17 @@ export default function DashboardPage() {
 									min='0'
 									step='100'
 									value={hourlyWageInput}
-									onChange={e => setHourlyWageInput(e.target.value)}
+									onChange={e => {
+										const value = e.target.value
+										// Agar bo'sh bo'lsa yoki faqat 0 bo'lsa, bo'sh qoldirish
+										if (value === '' || value === '0') {
+											setHourlyWageInput('')
+										} else {
+											// Oldingi nollarni olib tashlash va faqat raqamlarni qoldirish
+											const numericValue = value.replace(/^0+/, '') || ''
+											setHourlyWageInput(numericValue)
+										}
+									}}
 									placeholder='Masalan: 10000'
 									className='bg-[#0E1422] border-[#4E7BEE]/40 text-white placeholder:text-gray-500 focus:border-[#4E7BEE]'
 									onKeyPress={e => {
@@ -1534,7 +1585,12 @@ export default function DashboardPage() {
 									variant='outline'
 									onClick={() => {
 										setIsWageModalOpen(false)
-										setHourlyWageInput('')
+										// Modal yopilganda inputni tozalash
+										if (userData?.hourlyWage && userData.hourlyWage > 0) {
+											setHourlyWageInput(userData.hourlyWage.toString())
+										} else {
+											setHourlyWageInput('')
+										}
 									}}
 									className='border-[#4E7BEE]/40 text-gray-300 hover:bg-[#0E1422]'
 									disabled={updatingWage}

@@ -34,8 +34,14 @@ export interface TimeEntry {
 	date: string
 	position: string
 	breakMinutes?: number
-	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
+	overtimeReason?:
+		| 'Busy'
+		| 'Last Order'
+		| 'Company Request'
+		| 'Late Arrival'
+		| null
 	responsiblePerson?: 'Adilcan' | 'Boss' | ''
+	latePerson?: string
 	employeeId?: string
 }
 
@@ -43,8 +49,14 @@ export interface TimeEntryFormData {
 	startTime: string
 	endTime: string
 	date: string
-	overtimeReason?: 'Busy' | 'Last Order' | 'Company Request' | null
+	overtimeReason?:
+		| 'Busy'
+		| 'Last Order'
+		| 'Company Request'
+		| 'Late Arrival'
+		| null
 	responsiblePerson?: 'Adilcan' | 'Boss' | ''
+	latePerson?: string
 	employeeId?: string
 }
 

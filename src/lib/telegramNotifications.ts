@@ -14,6 +14,7 @@ interface TimeEntryData {
 	hours: number
 	overtimeReason?: string | null
 	responsiblePerson?: string
+	latePerson?: string
 }
 
 // Direct Telegram messaging removed due to CORS issues
@@ -35,6 +36,10 @@ Start: ${new Date(data.startTime).toLocaleTimeString().slice(0, 5)}
 End: ${new Date(data.endTime).toLocaleTimeString().slice(0, 5)}
 Hours: ${data.hours}h${
 		data.overtimeReason ? `\nOvertime: ${data.overtimeReason}` : ''
+	}${
+		data.overtimeReason === 'Late Arrival' && data.latePerson
+			? `\nLate Person: ${data.latePerson}`
+			: ''
 	}`
 
 	// Use backend proxy to avoid CORS issues

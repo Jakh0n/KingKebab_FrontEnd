@@ -43,6 +43,7 @@ export function EditTimeEntryModal({
 		date: new Date().toISOString().split('T')[0],
 		overtimeReason: null,
 		responsiblePerson: '',
+		latePerson: '',
 	})
 
 	// Ish vaqtidan tashqari ishlash tekshiruvi
@@ -82,6 +83,7 @@ export function EditTimeEntryModal({
 				date: new Date(entry.date).toISOString().split('T')[0],
 				overtimeReason: entry.overtimeReason,
 				responsiblePerson: entry.responsiblePerson || '',
+				latePerson: entry.latePerson || '',
 			})
 
 			setSelectedDate(new Date(entry.date))
@@ -96,6 +98,7 @@ export function EditTimeEntryModal({
 			date: new Date().toISOString().split('T')[0],
 			overtimeReason: null,
 			responsiblePerson: '',
+			latePerson: '',
 		})
 		setSelectedDate(new Date())
 		setError('')
@@ -136,6 +139,9 @@ export function EditTimeEntryModal({
 					) {
 						throw new Error("Mas'ul shaxsni tanlang")
 					}
+					if (overtimeReason === 'Late Arrival' && !formData.latePerson) {
+						throw new Error('Kech qolgan shaxsni kiriting')
+					}
 					responsiblePerson = formData.responsiblePerson || ''
 				}
 
@@ -145,6 +151,10 @@ export function EditTimeEntryModal({
 					date: selectedDate.toISOString().split('T')[0],
 					overtimeReason,
 					responsiblePerson,
+					latePerson:
+						isOvertime() && overtimeReason === 'Late Arrival'
+							? formData.latePerson
+							: '',
 				}
 
 				const updatedEntry = await updateTimeEntry(entry._id, data)
@@ -243,6 +253,10 @@ export function EditTimeEntryModal({
 												e.target.value === 'Company Request'
 													? formData.responsiblePerson
 													: '',
+											latePerson:
+												e.target.value === 'Late Arrival'
+													? formData.latePerson
+													: '',
 										})
 									}
 									className='w-full bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10'
@@ -252,6 +266,7 @@ export function EditTimeEntryModal({
 									<option value='Busy'>Busy</option>
 									<option value='Last Order'>Last Order</option>
 									<option value='Company Request'>Company Request</option>
+									<option value='Late Arrival'>Late Arrival</option>
 								</select>
 							</div>
 
@@ -277,6 +292,28 @@ export function EditTimeEntryModal({
 										<option value='Adilcan'>Adilcan</option>
 										<option value='Boss'>Boss</option>
 									</select>
+								</div>
+							)}
+
+							{formData.overtimeReason === 'Late Arrival' && (
+								<div className='space-y-2'>
+									<Label className='text-sm flex items-center gap-1.5'>
+										<User className='w-4 h-4 text-gray-400' />
+										Who was late?
+									</Label>
+									<Input
+										type='text'
+										value={formData.latePerson || ''}
+										onChange={e =>
+											setFormData({
+												...formData,
+												latePerson: e.target.value,
+											})
+										}
+										placeholder='Enter name of person who was late'
+										className='bg-[#1A1F2E] border-none text-white text-sm h-10'
+										required
+									/>
 								</div>
 							)}
 						</div>
