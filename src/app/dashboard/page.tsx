@@ -24,9 +24,7 @@ import {
 	addTimeEntry,
 	deleteTimeEntry,
 	getMyTimeEntries,
-	getUserProfile,
 	logout,
-	updateUserProfile,
 } from '@/lib/api'
 import { notifyTimeEntry } from '@/lib/telegramNotifications'
 import { TimeEntry, TimeEntryFormData } from '@/types'
@@ -64,7 +62,6 @@ export default function DashboardPage() {
 		username: string
 		position: string
 		employeeId?: string
-		hourlyWage?: number
 	} | null>(null)
 	const [formData, setFormData] = useState<TimeEntryFormData>({
 		startTime: '',
@@ -86,9 +83,6 @@ export default function DashboardPage() {
 	const [currentPage, setCurrentPage] = useState(1)
 	const [isListening, setIsListening] = useState(false)
 	const [speechSupported, setSpeechSupported] = useState(false)
-	const [isWageModalOpen, setIsWageModalOpen] = useState(false)
-	const [hourlyWageInput, setHourlyWageInput] = useState('')
-	const [updatingWage, setUpdatingWage] = useState(false)
 
 	// Soatlarni hisoblash funksiyasi - backend bilan mos kelishi uchun
 	const calculateHours = useCallback(
@@ -179,20 +173,6 @@ export default function DashboardPage() {
 			position: payload.position,
 			employeeId: payload.employeeId,
 		})
-
-		// Load user profile to get hourly wage
-		const loadUserProfile = async () => {
-			try {
-				const profile = await getUserProfile()
-				setUserData(prev => ({
-					...prev!,
-					hourlyWage: profile.hourlyWage || 0,
-				}))
-			} catch (error) {
-				console.log('Could not load user profile:', error)
-			}
-		}
-		loadUserProfile()
 
 		loadEntries()
 	}, [router, loadEntries])
@@ -660,74 +640,108 @@ export default function DashboardPage() {
 		}
 	}, [entries, selectedMonth, selectedYear, currentPage])
 
-	// Daromadni hisoblash
-	const totalEarnings = useMemo(() => {
-		if (!userData?.hourlyWage || userData.hourlyWage === 0) return 0
+	// Smart time suggestions based on worker's historical patterns
+	const smartSuggestions = useMemo<{
+		startTime: string
+		endTime: string
+		message: string
+		count: number
+	} | null>(() => {
+		if (entries.length === 0) return null
 
-		const filteredEntriesForMonth = entries.filter(entry => {
+		// Get entries from the last 3 months
+		const threeMonthsAgo = new Date()
+		threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
+		const recentEntries = entries.filter(entry => {
 			const entryDate = new Date(entry.date)
-			return (
-				entryDate.getMonth() + 1 === selectedMonth &&
-				entryDate.getFullYear() === selectedYear
-			)
+			return entryDate >= threeMonthsAgo
 		})
 
-		const totalHours = filteredEntriesForMonth.reduce((sum, entry) => {
-			return sum + Number(entry.hours.toFixed(1))
-		}, 0)
+		if (recentEntries.length === 0) return null
 
-		return totalHours * userData.hourlyWage
-	}, [entries, selectedMonth, selectedYear, userData?.hourlyWage])
+		// Group entries by start and end time (rounded to nearest 15 minutes)
+		const timeGroups = new Map<
+			string,
+			{ count: number; startTime: string; endTime: string }
+		>()
 
-	// Format number with commas for Korean Won
-	const formatKRW = (amount: number) => {
-		return new Intl.NumberFormat('ko-KR', {
-			style: 'currency',
-			currency: 'KRW',
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		}).format(amount)
-	}
+		recentEntries.forEach(entry => {
+			const startTime = new Date(entry.startTime)
+			const endTime = new Date(entry.endTime)
 
-	// Soatlik ish haqqini yangilash
-	const handleUpdateWage = useCallback(async () => {
-		const wageValue = parseFloat(hourlyWageInput)
-		if (isNaN(wageValue) || wageValue < 0) {
-			toast.error("Iltimos, to'g'ri qiymat kiriting")
-			return
+			// Round to nearest 15 minutes for grouping
+			const startMinutes = startTime.getHours() * 60 + startTime.getMinutes()
+			const endMinutes = endTime.getHours() * 60 + endTime.getMinutes()
+
+			const roundedStart = Math.round(startMinutes / 15) * 15
+			const roundedEnd = Math.round(endMinutes / 15) * 15
+
+			// Format as HH:MM (handle 24-hour overflow)
+			const startHours = Math.floor(roundedStart / 60) % 24
+			const startMins = roundedStart % 60
+			const endHours = Math.floor(roundedEnd / 60) % 24
+			const endMins = roundedEnd % 60
+
+			const startStr = `${startHours.toString().padStart(2, '0')}:${startMins
+				.toString()
+				.padStart(2, '0')}`
+			const endStr = `${endHours.toString().padStart(2, '0')}:${endMins
+				.toString()
+				.padStart(2, '0')}`
+
+			const key = `${startStr}-${endStr}`
+
+			if (!timeGroups.has(key)) {
+				timeGroups.set(key, { count: 0, startTime: startStr, endTime: endStr })
+			}
+
+			const group = timeGroups.get(key)
+			if (group) {
+				group.count++
+			}
+		})
+
+		// Find the most common time pattern
+		let maxCount = 0
+		let mostCommonStartTime = ''
+		let mostCommonEndTime = ''
+		let mostCommonCount = 0
+
+		timeGroups.forEach(group => {
+			if (group.count > maxCount) {
+				maxCount = group.count
+				mostCommonStartTime = group.startTime
+				mostCommonEndTime = group.endTime
+				mostCommonCount = group.count
+			}
+		})
+
+		if (maxCount < 2 || !mostCommonStartTime || !mostCommonEndTime) return null
+
+		return {
+			startTime: mostCommonStartTime,
+			endTime: mostCommonEndTime,
+			message: `You usually work ${mostCommonStartTime} - ${mostCommonEndTime} (${mostCommonCount} times in last 3 months)`,
+			count: mostCommonCount,
 		}
+	}, [entries])
 
-		try {
-			setUpdatingWage(true)
-			const updatedProfile = await updateUserProfile({
-				hourlyWage: wageValue,
-			})
+	// Handler to apply suggestion
+	const handleApplySuggestion = useCallback(() => {
+		if (!smartSuggestions) return
 
-			setUserData(prev => ({
-				...prev!,
-				hourlyWage: updatedProfile.hourlyWage || 0,
-			}))
+		setFormData(prev => ({
+			...prev,
+			startTime: smartSuggestions.startTime,
+			endTime: smartSuggestions.endTime,
+		}))
 
-			setIsWageModalOpen(false)
-			setHourlyWageInput('')
-			toast.success('Soatlik ish haqqi yangilandi!')
-		} catch (error) {
-			console.error('Error updating wage:', error)
-			toast.error('Ish haqqini yangilashda xatolik yuz berdi')
-		} finally {
-			setUpdatingWage(false)
-		}
-	}, [hourlyWageInput])
-
-	// Modal ochilganda joriy qiymatni ko'rsatish
-	const handleOpenWageModal = useCallback(() => {
-		if (userData?.hourlyWage && userData.hourlyWage > 0) {
-			setHourlyWageInput(userData.hourlyWage.toString())
-		} else {
-			setHourlyWageInput('')
-		}
-		setIsWageModalOpen(true)
-	}, [userData?.hourlyWage])
+		toast.success('Time suggestion applied!', {
+			description: `Set to ${smartSuggestions.startTime} - ${smartSuggestions.endTime}`,
+			duration: 3000,
+		})
+	}, [smartSuggestions])
 
 	// Oylar ro'yxati
 	const months = useMemo(
@@ -965,7 +979,7 @@ export default function DashboardPage() {
 					</Card>
 
 					{/* Statistika */}
-					<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
 						<Card className='bg-[#0E1422] border-none text-white p-4'>
 							<div className='flex items-center gap-3'>
 								<div className='bg-[#4E7BEE]/10 p-3 rounded-lg'>
@@ -1005,35 +1019,6 @@ export default function DashboardPage() {
 										{stats.overtimeDays}d
 									</p>
 								</div>
-							</div>
-						</Card>
-
-						<Card
-							className='bg-[#0E1422] border-none text-white p-4 cursor-pointer hover:bg-[#1A1F2E] transition-colors'
-							onClick={handleOpenWageModal}
-						>
-							<div className='flex items-center gap-3'>
-								<div className='bg-[#10B981]/10 p-3 rounded-lg'>
-									<span className='text-2xl'>💰</span>
-								</div>
-								<div className='flex-1'>
-									<p className='text-gray-400 text-sm'>Total Earnings</p>
-									{userData?.hourlyWage && userData.hourlyWage > 0 ? (
-										<>
-											<p className='text-xl font-semibold text-[#10B981]'>
-												{formatKRW(totalEarnings)}
-											</p>
-											<p className='text-xs text-gray-500 mt-1'>
-												{userData.hourlyWage.toLocaleString('ko-KR')} KRW/hour
-											</p>
-										</>
-									) : (
-										<p className='text-sm text-gray-500 mt-1'>
-											Soatlik ish haqqini kiriting
-										</p>
-									)}
-								</div>
-								<Pencil className='w-4 h-4 text-gray-400' />
 							</div>
 						</Card>
 					</div>
@@ -1100,6 +1085,33 @@ export default function DashboardPage() {
 											(assumes 9 AM to 6 PM)
 										</span>
 									</p>
+								</div>
+							)}
+
+							{/* Smart Time Suggestions */}
+							{smartSuggestions && !formData.startTime && !formData.endTime && (
+								<div className='mb-4 p-4 bg-gradient-to-r from-[#4E7BEE]/20 to-[#4CC4C0]/20 rounded-lg border border-[#4E7BEE]/30 hover:border-[#4E7BEE]/50 transition-all'>
+									<div className='flex items-start justify-between gap-3'>
+										<div className='flex-1'>
+											<div className='flex items-center gap-2 mb-2'>
+												<Sparkles className='w-4 h-4 text-[#4E7BEE]' />
+												<p className='text-sm font-medium text-[#4E7BEE]'>
+													💡 Smart Suggestion
+												</p>
+											</div>
+											<p className='text-xs text-gray-300 leading-relaxed'>
+												{smartSuggestions.message}
+											</p>
+										</div>
+										<Button
+											type='button'
+											onClick={handleApplySuggestion}
+											className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white text-sm px-4 py-2 h-auto whitespace-nowrap flex-shrink-0 transition-all'
+										>
+											<CheckCircle2 className='w-4 h-4 mr-2' />
+											Use This
+										</Button>
+									</div>
 								</div>
 							)}
 
@@ -1304,7 +1316,7 @@ export default function DashboardPage() {
 											className='flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]'
 											disabled={logoutLoading}
 										>
-											{[2023, 2024, 2025].map(year => (
+											{[2025, 2026].map(year => (
 												<option key={year} value={year}>
 													{year}
 												</option>
@@ -1531,92 +1543,6 @@ export default function DashboardPage() {
 					entry={editingEntry}
 					onUpdate={handleEntryUpdate}
 				/>
-
-				{/* Hourly Wage Modal */}
-				<Dialog open={isWageModalOpen} onOpenChange={setIsWageModalOpen}>
-					<DialogContent className='bg-[#1A1F2E] border border-[#4E7BEE] text-white'>
-						<DialogHeader>
-							<DialogTitle className='text-lg font-semibold flex items-center gap-2'>
-								<span className='text-2xl'>💰</span>
-								Hourly Wage (KRW)
-							</DialogTitle>
-							<DialogDescription className='text-gray-400'>
-								Enter your hourly wage in Korean Won
-							</DialogDescription>
-						</DialogHeader>
-						<div className='space-y-4 mt-4'>
-							<div className='space-y-2'>
-								<Label className='text-sm text-gray-300'>Hourly Wage</Label>
-								<Input
-									type='number'
-									min='0'
-									step='100'
-									value={hourlyWageInput}
-									onChange={e => {
-										const value = e.target.value
-										// If empty or only 0, leave empty
-										if (value === '' || value === '0') {
-											setHourlyWageInput('')
-										} else {
-											// Remove leading zeros and keep only numbers
-											const numericValue = value.replace(/^0+/, '') || ''
-											setHourlyWageInput(numericValue)
-										}
-									}}
-									placeholder='Example: 10000'
-									className='bg-[#0E1422] border-[#4E7BEE]/40 text-white placeholder:text-gray-500 focus:border-[#4E7BEE]'
-									onKeyPress={e => {
-										if (e.key === 'Enter') {
-											handleUpdateWage()
-										}
-									}}
-								/>
-								<p className='text-xs text-gray-500'>
-									Current value:{' '}
-									{userData?.hourlyWage
-										? `${userData.hourlyWage.toLocaleString('ko-KR')} KRW`
-										: 'Not set'}
-								</p>
-							</div>
-							<div className='flex justify-end gap-2 pt-2'>
-								<Button
-									variant='outline'
-									onClick={() => {
-										setIsWageModalOpen(false)
-										// Clear input when modal closes
-										if (userData?.hourlyWage && userData.hourlyWage > 0) {
-											setHourlyWageInput(userData.hourlyWage.toString())
-										} else {
-											setHourlyWageInput('')
-										}
-									}}
-									className='bg-gray-600/20 border-gray-500/50 text-gray-300 hover:bg-gray-600/40 hover:border-gray-400/70 hover:text-white transition-all duration-200'
-									disabled={updatingWage}
-								>
-									<XCircle className='w-4 h-4 mr-2' />
-									Cancel
-								</Button>
-								<Button
-									onClick={handleUpdateWage}
-									className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white transition-all duration-200'
-									disabled={updatingWage}
-								>
-									{updatingWage ? (
-										<>
-											<div className='animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2'></div>
-											Saving...
-										</>
-									) : (
-										<>
-											<CheckCircle2 className='w-4 h-4 mr-2' />
-											Save
-										</>
-									)}
-								</Button>
-							</div>
-						</div>
-					</DialogContent>
-				</Dialog>
 			</div>
 		</main>
 	)

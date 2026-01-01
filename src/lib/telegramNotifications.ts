@@ -1,6 +1,5 @@
 // Clean Telegram notification utility for frontend
-
-const BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN
+// SECURITY: Bot token removed from frontend - all calls go through backend
 // Note: Direct Telegram calls removed due to CORS - using backend proxy instead
 
 interface TimeEntryData {
@@ -82,25 +81,34 @@ Hours: ${data.hours}h${
 }
 
 /**
- * Test Telegram connection
+ * Test Telegram connection (via backend for security)
  */
 export async function testTelegram(): Promise<boolean> {
-	if (!BOT_TOKEN) {
-		console.error('❌ Telegram bot token not configured')
-		return false
-	}
-
 	try {
+		const token = localStorage.getItem('token')
+		if (!token) {
+			console.error('❌ No auth token found')
+			return false
+		}
+
 		const response = await fetch(
-			`https://api.telegram.org/bot${BOT_TOKEN}/getMe`
+			`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/telegram/test`,
+			{
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+			}
 		)
+
 		const result = await response.json()
 
-		if (result.ok) {
-			console.log('✅ Telegram bot connected:', result.result.username)
+		if (result.success) {
+			console.log('✅ Telegram bot connected via backend')
 			return true
 		} else {
-			console.error('❌ Telegram bot connection failed:', result)
+			console.error('❌ Telegram bot connection failed:', result.message)
 			return false
 		}
 	} catch (error) {
