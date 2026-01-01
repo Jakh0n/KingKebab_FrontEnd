@@ -26,7 +26,7 @@
 		"clsx": "^2.1.1",
 		"js-cookie": "^3.0.5",
 		"lucide-react": "^0.511.0",
-		"next": "15.3.3",
+		"next": "^16.1.1",
 		"postcss": "^8.5.6",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
@@ -50,7 +50,7 @@
 		"@types/react-dom": "^19",
 		"@uploadthing/react": "^7.3.2",
 		"eslint": "^9",
-		"eslint-config-next": "15.3.3",
+		"eslint-config-next": "^16.1.1",
 		"typescript": "^5"
 	}
 }
