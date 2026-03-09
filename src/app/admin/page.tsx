@@ -15,6 +15,7 @@ import {
   logout,
   registerWorker,
 } from "@/lib/api";
+import { getTokenOrNull } from "@/lib/auth";
 import { TimeEntry } from "@/types";
 import {
   AlertTriangle,
@@ -80,12 +81,10 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!getTokenOrNull()) {
       router.push("/login");
       return;
     }
-
     loadEntries();
   }, [router, loadEntries]);
 

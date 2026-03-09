@@ -12,13 +12,6 @@ import { EditTimeEntryModal } from "@/components/EditTimeEntryModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,45 +20,59 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  addTimeEntry,
-  deleteTimeEntry,
-  getMyTimeEntries,
-  logout,
-} from "@/lib/api";
+import { addTimeEntry, deleteTimeEntry, logout } from "@/lib/api";
+import { getTokenOrNull } from "@/lib/auth";
 import { notifyTimeEntry } from "@/lib/telegramNotifications";
 import { TimeEntry, TimeEntryFormData } from "@/types";
 import {
   AlertTriangle,
   Calendar,
-  CalendarDays,
   CheckCircle2,
   Clock,
   FileText,
-  LogOut,
-  Menu,
   Mic,
   MicOff,
-  Pencil,
   Sparkles,
-  Timer,
-  Trash2,
   User,
-  XCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 import { TimePicker } from "../../components/ui/time-picker";
-import Link from "next/link";
+import { DashboardHeader } from "./components/DashboardHeader";
+import { useDashboardStats } from "./hooks/useDashboardStats";
+import { useMonthFilter } from "./hooks/useMonthFilter";
+import { useTimeEntries } from "./hooks/useTimeEntries";
+import { StatsCards } from "./components/StatsCards";
+import { TimeEntriesList } from "./components/TimeEntriesList";
 
 export default function DashboardPage() {
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const {
+    selectedMonth,
+    selectedYear,
+    setSelectedMonth,
+    setSelectedYear,
+    currentPage,
+    setCurrentPage,
+    months,
+  } = useMonthFilter();
+  const {
+    entries,
+    loading,
+    error,
+    setLoading,
+    setError,
+    loadEntries,
+    setEntries,
+  } = useTimeEntries(selectedMonth, selectedYear);
+  const { filteredEntries, stats, totalPages } = useDashboardStats(
+    entries,
+    selectedMonth,
+    selectedYear,
+    currentPage,
+  );
+
   const [userData, setUserData] = useState<{
     id: string;
     username: string;
@@ -89,7 +96,6 @@ export default function DashboardPage() {
     [key: string]: boolean;
   }>({});
   const [showBetaModal, setShowBetaModal] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
@@ -124,52 +130,8 @@ export default function DashboardPage() {
     return calculateHours(formData.startTime, formData.endTime) > 12;
   }, [formData.startTime, formData.endTime, calculateHours]);
 
-  const loadEntries = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      // Cache key yaratish
-      const cacheKey = `timeEntries_${selectedMonth}_${selectedYear}`;
-
-      // Har doim fresh data olish uchun cache ni tekshirmasdan to'g'ridan-to'g'ri API dan olish
-      const data = await getMyTimeEntries();
-
-      if (!Array.isArray(data)) {
-        setError("Invalid data format");
-        return;
-      }
-
-      const validEntries = data.map((entry) => ({
-        ...entry,
-        date: new Date(entry.date).toISOString().split("T")[0],
-        startTime: new Date(entry.startTime).toISOString(),
-        endTime: new Date(entry.endTime).toISOString(),
-        // Backend calculation bilan mos kelishi uchun
-        hours: Number(entry.hours.toFixed(1)),
-      }));
-
-      // Cache ga saqlash
-      localStorage.setItem(cacheKey, JSON.stringify(validEntries));
-      setEntries(validEntries);
-    } catch (err) {
-      console.error("Error loading entries:", err);
-      // Fallback: cache dan olishga harakat qilish
-      const cacheKey = `timeEntries_${selectedMonth}_${selectedYear}`;
-      const cachedData = localStorage.getItem(cacheKey);
-      if (cachedData) {
-        console.log("Using cached data as fallback");
-        setEntries(JSON.parse(cachedData));
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to load data");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedMonth, selectedYear]);
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getTokenOrNull();
     if (!token) {
       router.push("/login");
       return;
@@ -598,57 +560,6 @@ export default function DashboardPage() {
   // 	}
   // }
 
-  // Tanlangan oyning vaqtlarini filterlash va statistikani hisoblash
-  const { filteredEntries, stats, totalPages } = useMemo(() => {
-    // Avval barcha yozuvlarni filterlash
-    const allFilteredEntries = entries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return (
-          entryDate.getMonth() + 1 === selectedMonth &&
-          entryDate.getFullYear() === selectedYear
-        );
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    // Pagination uchun
-    const itemsPerPage = 10;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-
-    // Sahifadagi yozuvlarni ajratib olish
-    const paginatedEntries = allFilteredEntries.slice(startIndex, endIndex);
-
-    // Statistikani hisoblash - backend bilan mos kelishi uchun to'g'ri yumaloqlash
-    const stats = allFilteredEntries.reduce(
-      (acc, entry) => {
-        // Backend Number(workHours.toFixed(1)) bilan mos kelishi uchun
-        const entryHours = Number(entry.hours.toFixed(1));
-        acc.totalHours += entryHours;
-        if (entryHours <= 12) {
-          acc.regularDays++;
-        } else {
-          acc.overtimeDays++;
-        }
-        return acc;
-      },
-      {
-        totalHours: 0,
-        regularDays: 0,
-        overtimeDays: 0,
-      },
-    );
-
-    // Total hours ni ham to'g'ri yumaloqlash
-    stats.totalHours = Number(stats.totalHours.toFixed(1));
-
-    return {
-      filteredEntries: paginatedEntries,
-      stats,
-      totalPages: Math.ceil(allFilteredEntries.length / itemsPerPage),
-    };
-  }, [entries, selectedMonth, selectedYear, currentPage]);
-
   // Smart time suggestions based on worker's historical patterns
   const smartSuggestions = useMemo<{
     startTime: string;
@@ -752,25 +663,6 @@ export default function DashboardPage() {
     });
   }, [smartSuggestions]);
 
-  // Oylar ro'yxati
-  const months = useMemo(
-    () => [
-      { value: 1, label: "January" },
-      { value: 2, label: "February" },
-      { value: 3, label: "March" },
-      { value: 4, label: "April" },
-      { value: 5, label: "May" },
-      { value: 6, label: "June" },
-      { value: 7, label: "July" },
-      { value: 8, label: "August" },
-      { value: 9, label: "September" },
-      { value: 10, label: "October" },
-      { value: 11, label: "November" },
-      { value: 12, label: "December" },
-    ],
-    [],
-  );
-
   const toggleAnnouncement = (id: string) => {
     setExpandedAnnouncements((prev) => ({
       ...prev,
@@ -819,144 +711,11 @@ export default function DashboardPage() {
         </Dialog>
         <Toaster richColors position="top-right" theme="dark" />
         <div className="max-w-4xl mx-auto space-y-3 sm:space-y-6">
-          {/* Header */}
-          <div className="flex flex-row justify-between items-start gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg">
-            <div className="flex items-center gap-4 min-w-0 flex-1">
-              <Image
-                src="/cropped-kinglogo.avif"
-                alt="King Kebab Logo"
-                className="w-12 h-12 object-contain"
-                width={100}
-                height={100}
-              />
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold text-white">
-                  Dashboard
-                </h1>
-                {userData && (
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm sm:text-base text-gray-400">
-                      {userData.username}
-                    </p>
-                    <span className="px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded-full border border-[#4E7BEE]/20">
-                      ID: {userData.employeeId || "N/A"}
-                    </span>
-                    <span className="text-sm sm:text-base text-gray-400">
-                      -{" "}
-                      {userData.position === "worker"
-                        ? "Worker"
-                        : userData.position === "rider"
-                          ? "Rider"
-                          : "Monthly"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2 sm:w-auto flex-wrap items-center flex-shrink-0">
-              {/* Mobile: hamburger menu — yuqori o'ngda */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="sm:hidden h-9 w-9 bg-[#1A1F2E] hover:bg-[#2A3447] flex-shrink-0"
-                  >
-                    <Menu className="h-5 w-5 text-[#4E7BEE]" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 bg-[#1A1F2E] border-[#2A3447] text-white"
-                >
-                  <DropdownMenuItem
-                    className="hover:bg-[#2A3447] cursor-pointer group"
-                    asChild
-                  >
-                    <Link
-                      href="https://kingschadule.netlify.app"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center"
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80" />
-                      Schedule
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="hover:bg-[#2A3447] cursor-pointer group"
-                    onClick={() => router.push("/dashboard/profile")}
-                  >
-                    <User className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-[#2A3447]" />
-                  <DropdownMenuItem
-                    className="hover:bg-[#2A3447] cursor-pointer group text-[#FF3B6F] focus:text-[#FF3B6F]"
-                    onClick={handleLogout}
-                    disabled={logoutLoading}
-                  >
-                    {logoutLoading ? (
-                      <span className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2" />
-                        Logging out...
-                      </span>
-                    ) : (
-                      <>
-                        <LogOut className="mr-2 h-4 w-4 group-hover:text-[#FF3B6F]/80" />
-                        Logout
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {/* Desktop: Schedule, Profile, Logout buttons */}
-              <div className="hidden sm:flex gap-2 flex-wrap">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="flex-none bg-transparent border-[#4E7BEE]/20 text-[#4E7BEE] hover:bg-[#4E7BEE]/15 hover:border-[#4E7BEE]/50 hover:shadow-[0_0_14px_rgba(78,123,238,0.25)] transition-all duration-200 hover:scale-[1.02] text-sm"
-                >
-                  <Link
-                    href="https://kingschadule.netlify.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center"
-                  >
-                    <CalendarDays size={16} className="mr-1" />
-                    Schedule
-                  </Link>
-                </Button>
-                <Button
-                  onClick={() => router.push("/dashboard/profile")}
-                  variant="outline"
-                  className="flex-none bg-transparent border-[#4CC4C0]/20 text-[#4CC4C0] hover:bg-[#4CC4C0]/10 text-sm"
-                  disabled={logoutLoading}
-                >
-                  <User size={16} className="mr-1" />
-                  Profile
-                </Button>
-                <Button
-                  onClick={handleLogout}
-                  className="flex-none bg-[#FF3B6F] hover:bg-[#FF3B6F]/90 text-sm cursor-pointer"
-                  disabled={logoutLoading}
-                >
-                  {logoutLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white mr-2" />
-                      Logging out...
-                    </>
-                  ) : (
-                    <>
-                      <span className="ml-1">Logout</span>
-                      <LogOut size={16} />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
+          <DashboardHeader
+            userData={userData}
+            onLogout={handleLogout}
+            logoutLoading={logoutLoading}
+          />
 
           {/* E'lonlar Banner */}
           <Card className="bg-[#0E1422] border-none text-white overflow-hidden">
@@ -1061,50 +820,7 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          {/* Statistika */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Card className="bg-[#0E1422] border-none text-white p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#4E7BEE]/10 p-3 rounded-lg">
-                  <Timer className="w-6 h-6 text-[#4E7BEE]" />
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Total Hours</p>
-                  <p className="text-xl font-semibold text-[#4E7BEE]">
-                    {stats.totalHours.toFixed(1)}h
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="bg-[#0E1422] border-none text-white p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#4CC4C0]/10 p-3 rounded-lg">
-                  <CheckCircle2 className="w-6 h-6 text-[#4CC4C0]" />
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Regular Days</p>
-                  <p className="text-xl font-semibold text-[#4CC4C0]">
-                    {stats.regularDays}d
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="bg-[#0E1422] border-none text-white p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#FF3B6F]/10 p-3 rounded-lg">
-                  <AlertTriangle className="w-6 h-6 text-[#FF3B6F]" />
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Overtime Days</p>
-                  <p className="text-xl font-semibold text-[#FF3B6F]">
-                    {stats.overtimeDays}d
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
+          <StatsCards stats={stats} />
 
           {/* Vaqt kiritish formasi */}
           <Card className="bg-[#0E1422] border-none text-white">
@@ -1354,269 +1070,23 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          {/* Vaqt yozuvlari ro'yxati */}
-
-          <Card className="bg-[#0E1422] border-none text-white">
-            <div className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h2 className="text-base sm:text-xl flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-[#4E7BEE]" />
-                  My Time Entries
-                </h2>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Label className="text-sm min-w-[50px] flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      Month:
-                    </Label>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => {
-                        setSelectedMonth(parseInt(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]"
-                      disabled={logoutLoading}
-                    >
-                      {months.map((month) => (
-                        <option key={month.value} value={month.value}>
-                          {month.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Label className="text-sm min-w-[50px] flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      Year:
-                    </Label>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => {
-                        setSelectedYear(parseInt(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="flex-1 sm:flex-none bg-[#1A1F2E] border-none text-white rounded px-3 py-2 text-sm h-10 cursor-pointer min-w-[120px]"
-                      disabled={logoutLoading}
-                    >
-                      {[2025, 2026].map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Time entries list */}
-              <div className="h-[400px] overflow-y-auto custom-scrollbar pr-2 mb-4">
-                {loading ? (
-                  <p className="text-center text-gray-400 text-sm">
-                    Loading...
-                  </p>
-                ) : error ? (
-                  <p className="text-center text-red-500 text-sm">{error}</p>
-                ) : filteredEntries.length === 0 ? (
-                  <div className="text-center text-gray-400 text-sm py-8">
-                    <XCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No time entries for this month</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredEntries.map((entry) => {
-                      const isOvertime = entry.hours > 12;
-                      return (
-                        <div
-                          key={entry._id}
-                          className={`bg-gradient-to-r ${
-                            isOvertime
-                              ? "from-[#1A1F2E] to-yellow-950/10 border-l-4 border-l-yellow-500"
-                              : "from-[#1A1F2E] to-[#1A1F2E] border-l-4 border-l-emerald-500"
-                          } rounded-lg transition-all duration-300 hover:shadow-lg`}
-                        >
-                          <div className="p-5">
-                            {/* Yuqori qism: Sana, Status va Amallar */}
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="bg-[#4E7BEE]/10 p-2.5 rounded-lg">
-                                  <CalendarDays className="w-5 h-5 text-[#4E7BEE]" />
-                                </div>
-                                <div>
-                                  <p className="text-sm text-gray-400">Date</p>
-                                  <p className="font-medium">
-                                    {new Date(entry.date).toLocaleDateString(
-                                      "en-US",
-                                      {
-                                        weekday: "short",
-                                        month: "short",
-                                        day: "numeric",
-                                      },
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`px-3 py-1.5 rounded-full ${
-                                    isOvertime
-                                      ? "bg-yellow-500/10"
-                                      : "bg-emerald-500/10"
-                                  }`}
-                                >
-                                  <p
-                                    className={`text-sm font-medium ${
-                                      isOvertime
-                                        ? "text-yellow-500"
-                                        : "text-emerald-500"
-                                    }`}
-                                  >
-                                    {isOvertime ? "Overtime" : "Regular"}
-                                  </p>
-                                </div>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => handleEditEntry(entry)}
-                                    disabled={
-                                      logoutLoading ||
-                                      Math.ceil(
-                                        Math.abs(
-                                          new Date().getTime() -
-                                            new Date(entry.date).getTime(),
-                                        ) /
-                                          (1000 * 60 * 60 * 24),
-                                      ) > 2
-                                    }
-                                    className={`hover:bg-[#2A3447] h-8 w-8 ${
-                                      Math.ceil(
-                                        Math.abs(
-                                          new Date().getTime() -
-                                            new Date(entry.date).getTime(),
-                                        ) /
-                                          (1000 * 60 * 60 * 24),
-                                      ) > 2
-                                        ? "text-gray-500 cursor-not-allowed"
-                                        : "text-[#4E7BEE] hover:text-[#4E7BEE]/80"
-                                    }`}
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => handleDelete(entry._id)}
-                                    className="hover:bg-[#2A3447] text-red-500 hover:text-red-600 h-8 w-8"
-                                    disabled={logoutLoading}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Asosiy ma'lumotlar */}
-                            <div className="space-y-4">
-                              {/* Ish vaqti */}
-                              <div className="flex items-center gap-4 bg-[#0E1422] p-4 rounded-lg">
-                                <div className="bg-[#4CC4C0]/10 p-2.5 rounded-lg">
-                                  <Clock className="w-5 h-5 text-[#4CC4C0]" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm text-gray-400">
-                                    Working Hours
-                                  </p>
-                                  <div className="flex items-center justify-between">
-                                    <p className="font-medium text-[#4CC4C0]">
-                                      {formatTime(entry.startTime)} -{" "}
-                                      {formatTime(entry.endTime)}
-                                    </p>
-                                    <p className="text-[#4E7BEE] font-medium">
-                                      {entry.hours.toFixed(1)} hours
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Overtime ma'lumotlari */}
-                              {isOvertime && entry.overtimeReason && (
-                                <div className="relative">
-                                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-yellow-500/20"></div>
-                                  <div className="space-y-4 pl-8">
-                                    {/* Overtime sababi */}
-                                    <div className="flex items-center gap-3">
-                                      <div className="bg-yellow-500/10 p-2.5 rounded-lg">
-                                        <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                                      </div>
-                                      <div>
-                                        <p className="text-sm text-gray-400">
-                                          Overtime Reason
-                                        </p>
-                                        <p className="font-medium text-yellow-500">
-                                          {entry.overtimeReason}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    {/* Mas'ul shaxs */}
-                                    {entry.overtimeReason ===
-                                      "Company Request" &&
-                                      entry.responsiblePerson && (
-                                        <div className="flex items-center gap-3">
-                                          <div className="bg-blue-500/10 p-2.5 rounded-lg">
-                                            <User className="w-5 h-5 text-blue-500" />
-                                          </div>
-                                          <div>
-                                            <p className="text-sm text-gray-400">
-                                              Responsible Person
-                                            </p>
-                                            <p className="font-medium text-blue-500">
-                                              {entry.responsiblePerson}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1 || logoutLoading}
-                    className="bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer"
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-gray-400">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((prev) => prev + 1)}
-                    disabled={currentPage >= totalPages || logoutLoading}
-                    className="bg-[#1A1F2E] border-none text-white hover:bg-[#2A3447] cursor-pointer"
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
-            </div>
-          </Card>
+          <TimeEntriesList
+            filteredEntries={filteredEntries}
+            loading={loading}
+            error={error}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedYear={setSelectedYear}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+            months={months}
+            logoutLoading={logoutLoading}
+            formatTime={formatTime}
+            onEditEntry={handleEditEntry}
+            onDelete={handleDelete}
+          />
         </div>
 
         {/* Edit Modal */}

@@ -6,6 +6,7 @@ import {
 	TimeEntryFormData,
 	User,
 } from '@/types'
+import { getAuthHeaders } from '@/lib/auth'
 import Cookies from 'js-cookie'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
@@ -142,9 +143,6 @@ class OptimizedDataService {
 
 	// Time entries - optimized approach
 	async getMyTimeEntries(): Promise<TimeEntry[]> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		// Check cache first (5 minute TTL)
 		const cached = this.getCache<TimeEntry[]>('myTimeEntries')
 		if (cached) {
@@ -154,9 +152,7 @@ class OptimizedDataService {
 
 		// Fetch fresh data from MongoDB
 		const response = await fetch(`${API_URL}/time/my-entries`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		const data = await this.handleResponse<TimeEntry[]>(response)
@@ -169,14 +165,9 @@ class OptimizedDataService {
 
 	// Admin entries - always fresh from MongoDB
 	async getAllTimeEntries(): Promise<TimeEntry[]> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		// Always fetch fresh data for admin accuracy
 		const response = await fetch(`${API_URL}/time/all`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		return this.handleResponse<TimeEntry[]>(response)
@@ -184,14 +175,9 @@ class OptimizedDataService {
 
 	// User profile - always fresh from MongoDB
 	async getUserProfile(): Promise<User> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		// Always fetch fresh profile data to avoid sync issues
 		const response = await fetch(`${API_URL}/profile`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		const user = await this.handleResponse<User>(response)
@@ -210,14 +196,11 @@ class OptimizedDataService {
 	}
 
 	async updateUserProfile(data: Partial<User>): Promise<User> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		const response = await fetch(`${API_URL}/profile`, {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
+				...getAuthHeaders(),
 			},
 			body: JSON.stringify(data),
 		})
@@ -227,14 +210,9 @@ class OptimizedDataService {
 
 	// Announcements - always fresh from MongoDB
 	async getAnnouncements(): Promise<Announcement[]> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		// Always fetch fresh announcements
 		const response = await fetch(`${API_URL}/announcements`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		return this.handleResponse<Announcement[]>(response)
@@ -242,9 +220,6 @@ class OptimizedDataService {
 
 	// Time entry operations
 	async addTimeEntry(data: TimeEntryFormData): Promise<TimeEntry> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		if (!data.startTime || !data.endTime || !data.date) {
 			throw new Error('Please fill in all fields')
 		}
@@ -261,7 +236,7 @@ class OptimizedDataService {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
+				...getAuthHeaders(),
 			},
 			body: JSON.stringify(formattedData),
 		})
@@ -278,9 +253,6 @@ class OptimizedDataService {
 		id: string,
 		data: TimeEntryFormData
 	): Promise<TimeEntry> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('Not authenticated')
-
 		if (!data.startTime || !data.endTime || !data.date) {
 			throw new Error('Please fill in all fields')
 		}
@@ -296,7 +268,7 @@ class OptimizedDataService {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
+				...getAuthHeaders(),
 			},
 			body: JSON.stringify(formattedData),
 		})
@@ -310,14 +282,9 @@ class OptimizedDataService {
 	}
 
 	async deleteTimeEntry(entryId: string): Promise<void> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('No token found')
-
 		const response = await fetch(`${API_URL}/time/${entryId}`, {
 			method: 'DELETE',
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		if (!response.ok) {
@@ -330,13 +297,8 @@ class OptimizedDataService {
 
 	// PDF downloads
 	async downloadMyPDF(month: number, year: number): Promise<void> {
-		const token = localStorage.getItem('token')
-		if (!token) throw new Error('No token found')
-
 		const response = await fetch(`${API_URL}/time/my-pdf/${month}/${year}`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
+			headers: getAuthHeaders(),
 		})
 
 		if (!response.ok) {

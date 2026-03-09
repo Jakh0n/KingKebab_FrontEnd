@@ -1,0 +1,38 @@
+import { useMemo, useState } from "react";
+
+const MONTHS = [
+  { value: 1, label: "January" },
+  { value: 2, label: "February" },
+  { value: 3, label: "March" },
+  { value: 4, label: "April" },
+  { value: 5, label: "May" },
+  { value: 6, label: "June" },
+  { value: 7, label: "July" },
+  { value: 8, label: "August" },
+  { value: 9, label: "September" },
+  { value: 10, label: "October" },
+  { value: 11, label: "November" },
+  { value: 12, label: "December" },
+] as const;
+
+export function useMonthFilter() {
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => new Date().getMonth() + 1
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    () => new Date().getFullYear()
+  );
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const months = useMemo(() => MONTHS, []);
+
+  return {
+    selectedMonth,
+    selectedYear,
+    setSelectedMonth,
+    setSelectedYear,
+    currentPage,
+    setCurrentPage,
+    months,
+  };
+}

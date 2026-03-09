@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { getMyTimeEntries, getUserProfile, updateUserProfile } from '@/lib/api'
+import { getTokenOrNull } from '@/lib/auth'
 import { User } from '@/types'
 import {
 	Activity,
@@ -186,10 +187,7 @@ export default function UserProfile() {
 
 	const fetchUserProfile = async () => {
 		try {
-			console.log('Loading user profile from token...')
-			const token = localStorage.getItem('token')
-			console.log('Token exists:', !!token)
-
+			const token = getTokenOrNull()
 			if (!token) {
 				throw new Error('No authentication token found')
 			}

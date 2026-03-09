@@ -2,6 +2,8 @@
 // SECURITY: Bot token removed from frontend - all calls go through backend
 // Note: Direct Telegram calls removed due to CORS - using backend proxy instead
 
+import { getAuthHeaders, getTokenOrNull } from '@/lib/auth'
+
 interface TimeEntryData {
 	user: {
 		username: string
@@ -43,13 +45,12 @@ Hours: ${data.hours}h${
 
 	// Use backend proxy to avoid CORS issues
 	try {
-		console.log('📤 Sending via backend proxy...')
-
-		const token = localStorage.getItem('token')
-		if (!token) {
+		if (!getTokenOrNull()) {
 			console.warn('❌ No auth token found')
 			return
 		}
+		console.log('📤 Sending via backend proxy...')
+		const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() }
 
 		const response = await fetch(
 			`${
@@ -57,10 +58,7 @@ Hours: ${data.hours}h${
 			}/notify/telegram`,
 			{
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
+				headers,
 				body: JSON.stringify({
 					message,
 					user: data.user,
@@ -85,19 +83,17 @@ Hours: ${data.hours}h${
  */
 export async function testTelegram(): Promise<boolean> {
 	try {
-		const token = localStorage.getItem('token')
-		if (!token) {
+		if (!getTokenOrNull()) {
 			console.error('❌ No auth token found')
 			return false
 		}
-
 		const response = await fetch(
 			`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/telegram/test`,
 			{
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
+					...getAuthHeaders(),
 				},
 			}
 		)
