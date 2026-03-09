@@ -115,6 +115,24 @@ export async function register(
 	return data
 }
 
+export async function requestPasswordReset(employeeId: string): Promise<{ message: string }> {
+	const response = await fetch(`${API_URL}/auth/forgot-password`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ employeeId: employeeId.trim() }),
+	})
+	return handleResponse<{ message: string }>(response)
+}
+
+export async function resetPassword(employeeId: string, newPassword: string): Promise<{ message: string }> {
+	const response = await fetch(`${API_URL}/auth/reset-password`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ employeeId: employeeId.trim(), newPassword: newPassword.trim() }),
+	})
+	return handleResponse<{ message: string }>(response)
+}
+
 export async function addTimeEntry(
 	data: TimeEntryFormData
 ): Promise<TimeEntry> {
