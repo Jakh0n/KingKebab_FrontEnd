@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   createAnnouncement,
+  deleteAnnouncement,
+  getAnnouncements,
   getAllTimeEntries,
   logout,
   registerWorker,
+  updateAnnouncement,
 } from "@/lib/api";
 import { getTokenOrNull } from "@/lib/auth";
-import { TimeEntry } from "@/types";
+import { Announcement, TimeEntry } from "@/types";
 import {
   AlertTriangle,
   Bell,
@@ -27,11 +30,14 @@ import {
   Clock,
   Download,
   ExternalLink,
+  FileText,
   LogOut,
   Menu,
+  Pencil,
   Search,
   Settings,
   Timer,
+  Trash2,
   User,
   UserPlus,
   Users,
@@ -53,6 +59,9 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] =
+    useState<Announcement | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const router = useRouter();
 
   const loadEntries = useCallback(async () => {
@@ -80,13 +89,24 @@ export default function AdminPage() {
     }
   }, [router]);
 
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const data = await getAnnouncements();
+      setAnnouncements(data);
+    } catch (err) {
+      console.error("Error loading announcements:", err);
+      setAnnouncements([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!getTokenOrNull()) {
       router.push("/login");
       return;
     }
     loadEntries();
-  }, [router, loadEntries]);
+    loadAnnouncements();
+  }, [router, loadEntries, loadAnnouncements]);
 
   // Oy yoki yil o'zgarganda ma'lumotlarni yangilash
   useEffect(() => {
@@ -398,7 +418,10 @@ export default function AdminPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="hover:bg-[#2A3447] cursor-pointer group"
-                  onClick={() => setIsAnnouncementModalOpen(true)}
+                  onClick={() => {
+                    setEditingAnnouncement(null);
+                    setIsAnnouncementModalOpen(true);
+                  }}
                 >
                   <Bell className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
                   <span>Add Announcement</span>
@@ -510,6 +533,99 @@ export default function AdminPage() {
               </div>
             </Card>
           </div>
+
+          {/* Announcements */}
+          <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Bell className="w-5 h-5 text-[#4CC4C0]" />
+                Announcements
+              </h2>
+              <Button
+                onClick={() => {
+                  setEditingAnnouncement(null);
+                  setIsAnnouncementModalOpen(true);
+                }}
+                className="bg-[#4CC4C0] hover:bg-[#4CC4C0]/90 text-white"
+              >
+                Add Announcement
+              </Button>
+            </div>
+            <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
+              {announcements.length === 0 ? (
+                <p className="text-gray-500 text-sm py-4">
+                  No announcements yet. Add one to show on the dashboard.
+                </p>
+              ) : (
+                announcements.map((a) => {
+                  const typeColor =
+                    a.type === "info"
+                      ? "text-[#4E7BEE]"
+                      : a.type === "warning"
+                        ? "text-yellow-500"
+                        : "text-[#4CC4C0]";
+                  return (
+                    <div
+                      key={a._id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#1A1F2E] p-3 rounded-lg border border-[#2A3447]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <FileText className={`w-4 h-4 flex-shrink-0 ${typeColor}`} />
+                          <p className="font-medium truncate">{a.title}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${typeColor} bg-white/5`}
+                          >
+                            {a.type}
+                          </span>
+                          {!a.isActive && (
+                            <span className="text-xs text-gray-500">(hidden)</span>
+                          )}
+                        </div>
+                        <p className="text-gray-400 text-sm mt-1 line-clamp-2">
+                          {a.content}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-[#4E7BEE] hover:bg-[#4E7BEE]/10"
+                          onClick={() => {
+                            setEditingAnnouncement(a);
+                            setIsAnnouncementModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-500 hover:bg-red-500/10"
+                          onClick={async () => {
+                            if (!confirm("Delete this announcement?")) return;
+                            try {
+                              await deleteAnnouncement(a._id);
+                              await loadAnnouncements();
+                              toast.success("Announcement deleted");
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to delete",
+                              );
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
 
           {/* Main Content */}
           <div className="flex flex-col lg:flex-row gap-4">
@@ -771,18 +887,35 @@ export default function AdminPage() {
           />
 
           <AnnouncementModal
+            key={editingAnnouncement?._id ?? "new"}
             isOpen={isAnnouncementModalOpen}
-            onClose={() => setIsAnnouncementModalOpen(false)}
+            onClose={() => {
+              setEditingAnnouncement(null);
+              setIsAnnouncementModalOpen(false);
+            }}
+            announcement={editingAnnouncement ?? undefined}
             onSubmit={async (data) => {
               try {
-                await createAnnouncement(data);
+                if (editingAnnouncement) {
+                  await updateAnnouncement(editingAnnouncement._id, {
+                    ...data,
+                    isActive: data.isActive ?? true,
+                  });
+                  toast.success("Announcement updated");
+                } else {
+                  await createAnnouncement(data);
+                  toast.success("Announcement added successfully");
+                }
+                setEditingAnnouncement(null);
                 setIsAnnouncementModalOpen(false);
-                toast.success("Announcement added successfully");
+                await loadAnnouncements();
               } catch (error) {
                 toast.error(
                   error instanceof Error
                     ? error.message
-                    : "Failed to add announcement",
+                    : editingAnnouncement
+                      ? "Failed to update announcement"
+                      : "Failed to add announcement",
                 );
               }
             }}
