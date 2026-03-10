@@ -27,6 +27,7 @@ import {
   CalendarDays,
   ChefHat,
   ChevronRight,
+  ClipboardList,
   Clock,
   Download,
   ExternalLink,
@@ -446,6 +447,13 @@ export default function AdminPage() {
                 >
                   <CalendarDays className="mr-2 h-4 w-4 text-purple-400 group-hover:text-purple-400/80" />
                   <span>Download Monthly Users</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  onClick={() => router.push("/admin/survey")}
+                >
+                  <ClipboardList className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
+                  <span>Menu Survey</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="hover:bg-[#2A3447] cursor-pointer group">
                   <Settings className="mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80" />

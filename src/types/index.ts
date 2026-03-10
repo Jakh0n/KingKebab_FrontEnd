@@ -23,6 +23,16 @@ export interface User {
 	}
 	createdAt?: string
 	updatedAt?: string
+	surveyCompleted?: boolean
+	surveyResponses?: SurveyResponses
+}
+
+export interface SurveyResponses {
+	suggestionsOrRecommendations: string
+	shouldRemove: string
+	mostTimeOrDifficult: string
+	customersLikeLeast: string
+	removeOneAndWhy: string
 }
 
 export interface TimeEntry {

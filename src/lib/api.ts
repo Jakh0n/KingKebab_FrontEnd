@@ -7,6 +7,7 @@ import {
 	Schedule,
 	ScheduleConflict,
 	ScheduleFormData,
+	SurveyResponses,
 	TimeEntry,
 	TimeEntryFormData,
 	User,
@@ -423,6 +424,8 @@ export async function updateUserProfile(data: {
 		phone: string
 		relationship: string
 	}
+	surveyCompleted?: boolean
+	surveyResponses?: SurveyResponses
 }): Promise<User> {
 	const response = await fetch(`${API_URL}/profile`, {
 		method: 'PUT',

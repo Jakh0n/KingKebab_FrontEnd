@@ -24,7 +24,9 @@ import {
   addTimeEntry,
   deleteTimeEntry,
   getAnnouncements,
+  getUserProfile,
   logout,
+  updateUserProfile,
 } from "@/lib/api";
 import { getTokenOrNull } from "@/lib/auth";
 import { notifyTimeEntry } from "@/lib/telegramNotifications";
@@ -46,6 +48,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 import { TimePicker } from "../../components/ui/time-picker";
 import { DashboardHeader } from "./components/DashboardHeader";
+import { MenuSurveyModal } from "./components/MenuSurveyModal";
 import { useDashboardStats } from "./hooks/useDashboardStats";
 import { useMonthFilter } from "./hooks/useMonthFilter";
 import { useTimeEntries } from "./hooks/useTimeEntries";
@@ -101,7 +104,8 @@ export default function DashboardPage() {
     [key: string]: boolean;
   }>({});
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [showBetaModal, setShowBetaModal] = useState(true);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
+  const [surveyCompleted, setSurveyCompleted] = useState<boolean | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
@@ -155,6 +159,16 @@ export default function DashboardPage() {
     getAnnouncements()
       .then(setAnnouncements)
       .catch(() => setAnnouncements([]));
+
+    getUserProfile()
+      .then((user) => {
+        const completed = user.surveyCompleted ?? false;
+        setSurveyCompleted(completed);
+        setShowSurveyModal(!completed);
+      })
+      .catch(() => {
+        setSurveyCompleted(false);
+      });
   }, [router, loadEntries]);
 
   // Oy o'zgarganda yangi ma'lumotlarni yuklash
@@ -686,38 +700,19 @@ export default function DashboardPage() {
           logoutLoading ? "opacity-60 pointer-events-none" : ""
         } transition-all duration-300`}
       >
-        <Dialog open={showBetaModal} onOpenChange={setShowBetaModal}>
-          <DialogContent className="bg-[#1A1F2E] border border-[#4E7BEE] text-white">
-            <DialogHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 bg-[#4E7BEE]/10 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-[#4E7BEE]" />
-                </div>
-                <div>
-                  <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                    Beta Version
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs">
-                      v0.1.0
-                    </span>
-                  </DialogTitle>
-                </div>
-              </div>
-              <DialogDescription className="text-gray-400">
-                This app is currently in Beta (test) mode. Please write your
-                times in your notes. After the beta version, you can use it
-                normally.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={() => setShowBetaModal(false)}
-                className="bg-[#4E7BEE] hover:bg-[#4E7BEE]/90 text-white"
-              >
-                I Understand
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <MenuSurveyModal
+          isOpen={showSurveyModal}
+          onComplete={() => {
+            setShowSurveyModal(false);
+            setSurveyCompleted(true);
+          }}
+          onSubmit={async (responses) => {
+            await updateUserProfile({
+              surveyResponses: responses,
+              surveyCompleted: true,
+            });
+          }}
+        />
         <Toaster richColors position="top-right" theme="dark" />
         <div className="max-w-4xl mx-auto space-y-3 sm:space-y-6">
           <DashboardHeader
