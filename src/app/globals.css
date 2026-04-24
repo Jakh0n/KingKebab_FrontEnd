@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apple-inspired design tokens.
+ * Light defaults mirror macOS/iOS grouped backgrounds (#F5F5F7).
+ * Dark mode follows iOS dark (#000/#1C1C1E). */
+:root {
+	--radius: 0.75rem;
+
+	--background: 240 5% 96%;
+	--foreground: 240 6% 12%;
+
+	--card: 0 0% 100%;
+	--card-foreground: 240 6% 12%;
+
+	--popover: 0 0% 100%;
+	--popover-foreground: 240 6% 12%;
+
+	--primary: 211 100% 45%;
+	--primary-foreground: 0 0% 100%;
+
+	--secondary: 240 5% 96%;
+	--secondary-foreground: 240 6% 12%;
+
+	--muted: 240 5% 96%;
+	--muted-foreground: 240 2% 44%;
+
+	--accent: 240 6% 91%;
+	--accent-foreground: 240 6% 12%;
+
+	--destructive: 3 100% 59%;
+	--destructive-foreground: 0 0% 100%;
+
+	--success: 142 71% 45%;
+	--success-foreground: 0 0% 100%;
+
+	--warning: 33 100% 50%;
+	--warning-foreground: 0 0% 100%;
+
+	--border: 240 6% 91%;
+	--input: 240 6% 91%;
+	--ring: 211 100% 45%;
+}
+
+.dark {
+	--background: 0 0% 0%;
+	--foreground: 240 5% 96%;
+
+	--card: 240 4% 11%;
+	--card-foreground: 240 5% 96%;
+
+	--popover: 240 4% 11%;
+	--popover-foreground: 240 5% 96%;
+
+	--primary: 211 100% 52%;
+	--primary-foreground: 0 0% 100%;
+
+	--secondary: 240 4% 11%;
+	--secondary-foreground: 240 5% 96%;
+
+	--muted: 240 4% 11%;
+	--muted-foreground: 240 4% 60%;
+
+	--accent: 240 3% 22%;
+	--accent-foreground: 240 5% 96%;
+
+	--destructive: 3 100% 62%;
+	--destructive-foreground: 0 0% 100%;
+
+	--success: 142 71% 52%;
+	--success-foreground: 0 0% 100%;
+
+	--warning: 33 100% 55%;
+	--warning-foreground: 0 0% 100%;
+
+	--border: 240 3% 22%;
+	--input: 240 3% 22%;
+	--ring: 211 100% 52%;
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	html {
+		-webkit-text-size-adjust: 100%;
+		text-rendering: optimizeLegibility;
+	}
+
+	body {
+		@apply bg-background text-foreground antialiased;
+		font-feature-settings: 'ss01', 'cv11';
+		letter-spacing: -0.01em;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		@apply tracking-tight;
+	}
+}
+
+@layer utilities {
+	.text-balance {
+		text-wrap: balance;
+	}
+
+	/* Apple-style thin scrollbar */
+	.apple-scrollbar::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+	.apple-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.apple-scrollbar::-webkit-scrollbar-thumb {
+		background: hsl(var(--border));
+		border-radius: 9999px;
+	}
+	.apple-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: hsl(var(--muted-foreground) / 0.5);
+	}
+	.apple-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--border)) transparent;
+	}
+}
