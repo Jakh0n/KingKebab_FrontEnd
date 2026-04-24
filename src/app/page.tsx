@@ -8,14 +8,16 @@ export default function HomePage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(ellipse_at_center,_hsl(var(--primary)/0.08),_transparent_60%)]" />
 
       <section className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
-        <Image
-          src="/image.png"
-          alt="King Kebab"
-          width={96}
-          height={96}
-          priority
-          className="mb-8 h-20 w-20 rounded-2xl object-contain shadow-card"
-        />
+        <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl border border-border/60 bg-card/80 p-2 shadow-sm backdrop-blur-sm">
+          <Image
+            src="/image.png"
+            alt="King Kebab"
+            width={96}
+            height={96}
+            priority
+            className="h-full w-full rounded-2xl object-cover object-top"
+          />
+        </div>
 
         <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
           Time Management,
