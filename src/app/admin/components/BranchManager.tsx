@@ -21,6 +21,8 @@ import {
 	Building2,
 	Clock,
 	Edit,
+	List,
+	Map,
 	MapPin,
 	MoreHorizontal,
 	Phone,
@@ -29,14 +31,26 @@ import {
 	Trash2,
 	Users,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import BranchModal from './BranchModal'
+
+const BranchMap = dynamic(() => import('./BranchMap'), {
+	ssr: false,
+	loading: () => (
+		<div className='flex h-[520px] items-center justify-center rounded-2xl border border-border bg-[#1A1F2E]'>
+			<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-[#4E7BEE]' />
+		</div>
+	),
+})
 
 export default function BranchManager() {
 	const [branches, setBranches] = useState<Branch[]>([])
 	const [loading, setLoading] = useState(true)
 	const [searchQuery, setSearchQuery] = useState('')
+	const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards')
+	const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null)
 	const [isModalOpen, setIsModalOpen] = useState(false)
 	const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
 	const [isEditing, setIsEditing] = useState(false)
@@ -109,6 +123,7 @@ export default function BranchManager() {
 	}
 
 	const openEditModal = (branch: Branch) => {
+		setSelectedBranchId(branch._id)
 		setEditingBranch(branch)
 		setIsEditing(true)
 		setIsModalOpen(true)
@@ -125,6 +140,16 @@ export default function BranchManager() {
 			branch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			branch.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			branch.location.city.toLowerCase().includes(searchQuery.toLowerCase())
+	)
+	const branchesWithCoordinates = filteredBranches.filter(
+		branch =>
+			typeof branch.location.coordinates?.latitude === 'number' &&
+			typeof branch.location.coordinates.longitude === 'number'
+	)
+	const branchesMissingCoordinates = filteredBranches.filter(
+		branch =>
+			typeof branch.location.coordinates?.latitude !== 'number' ||
+			typeof branch.location.coordinates.longitude !== 'number'
 	)
 
 	const formatOperatingHours = (branch: Branch) => {
@@ -184,15 +209,39 @@ export default function BranchManager() {
 				</Button>
 			</div>
 
-			{/* Search */}
-			<div className='relative max-w-md'>
-				<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
-				<Input
-					placeholder='Search branches...'
-					value={searchQuery}
-					onChange={e => setSearchQuery(e.target.value)}
-					className='pl-10 bg-[#1A1F2E] border-none text-white'
-				/>
+			{/* Search and view switch */}
+			<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+				<div className='relative max-w-md flex-1'>
+					<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+					<Input
+						placeholder='Search branches...'
+						value={searchQuery}
+						onChange={e => setSearchQuery(e.target.value)}
+						className='pl-10 bg-[#1A1F2E] border-none text-white'
+					/>
+				</div>
+				<div className='flex rounded-full bg-[#1A1F2E] p-1'>
+					<Button
+						type='button'
+						size='sm'
+						variant={viewMode === 'cards' ? 'default' : 'ghost'}
+						className='rounded-full'
+						onClick={() => setViewMode('cards')}
+					>
+						<List className='mr-2 h-4 w-4' />
+						Cards
+					</Button>
+					<Button
+						type='button'
+						size='sm'
+						variant={viewMode === 'map' ? 'default' : 'ghost'}
+						className='rounded-full'
+						onClick={() => setViewMode('map')}
+					>
+						<Map className='mr-2 h-4 w-4' />
+						Map
+					</Button>
+				</div>
 			</div>
 
 			{/* Loading */}
@@ -203,7 +252,7 @@ export default function BranchManager() {
 			)}
 
 			{/* Branches Grid */}
-			{!loading && (
+			{!loading && viewMode === 'cards' && (
 				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
 					{filteredBranches.map(branch => (
 						<Card key={branch._id} className='bg-[#1A1F2E] border-none p-6'>
@@ -325,8 +374,83 @@ export default function BranchManager() {
 				</div>
 			)}
 
+			{!loading && viewMode === 'map' && (
+				<div className='grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]'>
+					<Card className='bg-[#1A1F2E] border-none p-4'>
+						<div className='mb-4'>
+							<h3 className='text-lg font-semibold text-white'>Map Branches</h3>
+							<p className='text-sm text-gray-400'>
+								{branchesWithCoordinates.length} mapped,{' '}
+								{branchesMissingCoordinates.length} missing coordinates
+							</p>
+						</div>
+						<div className='custom-scrollbar apple-scrollbar max-h-[444px] space-y-3 overflow-y-auto pr-1'>
+							{filteredBranches.map(branch => {
+								const hasCoordinates =
+									typeof branch.location.coordinates?.latitude === 'number' &&
+									typeof branch.location.coordinates.longitude === 'number'
+								const isSelected = selectedBranchId === branch._id
+
+								return (
+									<div
+										key={branch._id}
+										onClick={() => setSelectedBranchId(branch._id)}
+										className={`w-full cursor-pointer rounded-xl border p-3 text-left transition ${
+											isSelected
+												? 'border-[#4E7BEE] bg-[#4E7BEE]/10'
+												: 'border-gray-700 bg-[#0E1422] hover:border-[#4E7BEE]/60'
+										}`}
+									>
+										<div className='flex items-start justify-between gap-3'>
+											<div>
+												<p className='font-semibold text-white'>{branch.name}</p>
+												<p className='text-xs font-mono text-gray-400'>
+													{branch.code}
+												</p>
+											</div>
+											<span
+												className={`rounded-full px-2 py-1 text-xs ${
+													hasCoordinates
+														? 'bg-green-500/10 text-green-400'
+														: 'bg-yellow-500/10 text-yellow-400'
+												}`}
+											>
+												{hasCoordinates ? 'Mapped' : 'No pin'}
+											</span>
+										</div>
+										<p className='mt-2 line-clamp-2 text-sm text-gray-400'>
+											{branch.location.address}, {branch.location.city}
+										</p>
+										{!hasCoordinates && (
+											<Button
+												type='button'
+												size='sm'
+												variant='outline'
+												className='mt-3 bg-transparent text-white hover:bg-[#1A1F2E] hover:text-white'
+												onClick={event => {
+													event.stopPropagation()
+													openEditModal(branch)
+												}}
+											>
+												Add Coordinates
+											</Button>
+										)}
+									</div>
+								)
+							})}
+						</div>
+					</Card>
+					<BranchMap
+						branches={filteredBranches}
+						selectedBranchId={selectedBranchId}
+						onBranchSelect={setSelectedBranchId}
+						onEditBranch={openEditModal}
+					/>
+				</div>
+			)}
+
 			{/* Empty State */}
-			{!loading && filteredBranches.length === 0 && (
+			{!loading && viewMode === 'cards' && filteredBranches.length === 0 && (
 				<div className='text-center py-12'>
 					<Building2 className='h-12 w-12 text-gray-600 mx-auto mb-4' />
 					<h3 className='text-lg font-semibold text-white mb-2'>

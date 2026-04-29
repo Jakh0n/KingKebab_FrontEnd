@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
 	Dialog,
 	DialogContent,
@@ -10,9 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Branch, BranchFormData } from '@/types'
+import { Loader2, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import BranchLocationPicker from './BranchLocationPicker'
 
 interface BranchModalProps {
 	isOpen: boolean
@@ -22,6 +23,61 @@ interface BranchModalProps {
 	isEditing?: boolean
 }
 
+interface NominatimResult {
+	lat: string
+	lon: string
+	display_name: string
+	address?: {
+		city?: string
+		town?: string
+		village?: string
+		suburb?: string
+		state?: string
+		county?: string
+	}
+}
+
+const DEFAULT_OPERATING_HOURS = {
+	monday: { isOpen: true, open: '08:00', close: '22:00' },
+	tuesday: { isOpen: true, open: '08:00', close: '22:00' },
+	wednesday: { isOpen: true, open: '08:00', close: '22:00' },
+	thursday: { isOpen: true, open: '08:00', close: '22:00' },
+	friday: { isOpen: true, open: '08:00', close: '22:00' },
+	saturday: { isOpen: true, open: '08:00', close: '22:00' },
+	sunday: { isOpen: true, open: '08:00', close: '22:00' },
+}
+
+const DEFAULT_CAPACITY = { maxWorkers: 5, maxRiders: 2 }
+const DEFAULT_REQUIREMENTS = {
+	minimumStaff: 2,
+	skillsRequired: [] as BranchFormData['requirements'] extends infer R
+		? R extends { skillsRequired: infer S }
+			? S
+			: never
+		: never,
+}
+
+function generateBranchCode(name: string): string {
+	const cleaned = name.toUpperCase().replace(/[^A-Z0-9]/g, '')
+	const prefix = cleaned.slice(0, 6) || 'BR'
+	const suffix = Math.floor(Math.random() * 10000)
+		.toString()
+		.padStart(4, '0')
+	return `${prefix}${suffix}`.slice(0, 10)
+}
+
+function pickCity(result: NominatimResult): string {
+	return (
+		result.address?.city ||
+		result.address?.town ||
+		result.address?.village ||
+		result.address?.suburb ||
+		result.address?.county ||
+		result.address?.state ||
+		''
+	)
+}
+
 export default function BranchModal({
 	isOpen,
 	onClose,
@@ -29,539 +85,263 @@ export default function BranchModal({
 	branch,
 	isEditing = false,
 }: BranchModalProps) {
-	const [formData, setFormData] = useState<BranchFormData>({
-		name: '',
-		code: '',
-		location: {
-			address: '',
-			city: '',
-			district: '',
-		},
-		contact: {
-			phone: '',
-			email: '',
-			manager: '',
-		},
-		operatingHours: {
-			monday: { isOpen: true, open: '08:00', close: '22:00' },
-			tuesday: { isOpen: true, open: '08:00', close: '22:00' },
-			wednesday: { isOpen: true, open: '08:00', close: '22:00' },
-			thursday: { isOpen: true, open: '08:00', close: '22:00' },
-			friday: { isOpen: true, open: '08:00', close: '22:00' },
-			saturday: { isOpen: true, open: '08:00', close: '22:00' },
-			sunday: { isOpen: true, open: '08:00', close: '22:00' },
-		},
-		capacity: {
-			maxWorkers: 5,
-			maxRiders: 2,
-		},
-		requirements: {
-			minimumStaff: 2,
-			skillsRequired: [],
-		},
-		notes: '',
-	})
+	const [name, setName] = useState('')
+	const [address, setAddress] = useState('')
+	const [latitude, setLatitude] = useState('')
+	const [longitude, setLongitude] = useState('')
+	const [city, setCity] = useState('')
+	const [district, setDistrict] = useState('')
+	const [code, setCode] = useState('')
+	const [searching, setSearching] = useState(false)
 	const [error, setError] = useState('')
 
-	// Populate form when editing
 	useEffect(() => {
+		if (!isOpen) return
+
 		if (isEditing && branch) {
-			setFormData({
-				name: branch.name,
-				code: branch.code,
-				location: {
-					address: branch.location.address,
-					city: branch.location.city,
-					district: branch.location.district || '',
-				},
-				contact: {
-					phone: branch.contact?.phone || '',
-					email: branch.contact?.email || '',
-					manager: branch.contact?.manager || '',
-				},
-				operatingHours: branch.operatingHours,
-				capacity: {
-					maxWorkers: branch.capacity.maxWorkers,
-					maxRiders: branch.capacity.maxRiders,
-				},
-				requirements: {
-					minimumStaff: branch.requirements.minimumStaff,
-					skillsRequired: branch.requirements.skillsRequired || [],
-				},
-				notes: branch.notes || '',
-			})
+			setName(branch.name)
+			setAddress(branch.location.address || '')
+			setLatitude(branch.location.coordinates?.latitude?.toString() || '')
+			setLongitude(branch.location.coordinates?.longitude?.toString() || '')
+			setCity(branch.location.city || '')
+			setDistrict(branch.location.district || '')
+			setCode(branch.code)
 		} else {
-			// Reset form for new branch
-			setFormData({
-				name: '',
-				code: '',
-				location: {
-					address: '',
-					city: '',
-					district: '',
-				},
-				contact: {
-					phone: '',
-					email: '',
-					manager: '',
-				},
-				operatingHours: {
-					monday: { isOpen: true, open: '08:00', close: '22:00' },
-					tuesday: { isOpen: true, open: '08:00', close: '22:00' },
-					wednesday: { isOpen: true, open: '08:00', close: '22:00' },
-					thursday: { isOpen: true, open: '08:00', close: '22:00' },
-					friday: { isOpen: true, open: '08:00', close: '22:00' },
-					saturday: { isOpen: true, open: '08:00', close: '22:00' },
-					sunday: { isOpen: true, open: '08:00', close: '22:00' },
-				},
-				capacity: {
-					maxWorkers: 5,
-					maxRiders: 2,
-				},
-				requirements: {
-					minimumStaff: 2,
-					skillsRequired: [],
-				},
-				notes: '',
-			})
+			setName('')
+			setAddress('')
+			setLatitude('')
+			setLongitude('')
+			setCity('')
+			setDistrict('')
+			setCode('')
 		}
+		setError('')
 	}, [isEditing, branch, isOpen])
 
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault()
-		setError('')
+	const selectedCoordinates =
+		latitude.trim() && longitude.trim()
+			? {
+					latitude: Number(latitude),
+					longitude: Number(longitude),
+				}
+			: undefined
 
-		if (
-			!formData.name ||
-			!formData.code ||
-			!formData.location.address ||
-			!formData.location.city
-		) {
-			setError('Please fill in all required fields (name, code, address, city)')
+	async function handleSearchAddress() {
+		const query = address.trim()
+		if (!query) {
+			setError('Enter an address to search')
 			return
 		}
 
-		// Validate time format
-		const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
-		const days = [
-			'monday',
-			'tuesday',
-			'wednesday',
-			'thursday',
-			'friday',
-			'saturday',
-			'sunday',
-		]
+		try {
+			setSearching(true)
+			setError('')
 
-		for (const day of days) {
-			const daySchedule =
-				formData.operatingHours?.[day as keyof typeof formData.operatingHours]
-			if (daySchedule?.isOpen) {
-				if (
-					!timeRegex.test(daySchedule.open) ||
-					!timeRegex.test(daySchedule.close)
-				) {
-					setError('Please use HH:MM format for operating hours')
-					return
-				}
+			const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(
+				query
+			)}`
+			const response = await fetch(url, {
+				headers: { Accept: 'application/json' },
+			})
+
+			if (!response.ok) {
+				throw new Error('Failed to search address')
 			}
+
+			const data = (await response.json()) as NominatimResult[]
+			const result = data?.[0]
+			if (!result) {
+				setError('No location found for this address')
+				return
+			}
+
+			setLatitude(Number(result.lat).toFixed(6))
+			setLongitude(Number(result.lon).toFixed(6))
+			setAddress(result.display_name)
+			const detectedCity = pickCity(result)
+			if (detectedCity) {
+				setCity(detectedCity)
+			}
+			toast.success('Location found on the map')
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to search address')
+		} finally {
+			setSearching(false)
+		}
+	}
+
+	function handleSubmit(event: React.FormEvent) {
+		event.preventDefault()
+		setError('')
+
+		const trimmedName = name.trim()
+		if (!trimmedName) {
+			setError('Branch name is required')
+			return
 		}
 
-		onSave(formData)
-	}
+		const hasLatitude = latitude.trim().length > 0
+		const hasLongitude = longitude.trim().length > 0
+		if (!hasLatitude || !hasLongitude) {
+			setError('Pick the location on the map or search by address')
+			return
+		}
 
-	const updateDaySchedule = (
-		day: string,
-		field: string,
-		value: boolean | string
-	) => {
-		setFormData(prev => {
-			if (!prev.operatingHours) return prev
+		const parsedLatitude = Number(latitude)
+		const parsedLongitude = Number(longitude)
+		if (
+			Number.isNaN(parsedLatitude) ||
+			Number.isNaN(parsedLongitude) ||
+			parsedLatitude < -90 ||
+			parsedLatitude > 90 ||
+			parsedLongitude < -180 ||
+			parsedLongitude > 180
+		) {
+			setError('Coordinates are invalid')
+			return
+		}
 
-			const currentDay =
-				prev.operatingHours[day as keyof typeof prev.operatingHours]
-			if (!currentDay) return prev
+		const trimmedAddress = address.trim() || trimmedName
+		const trimmedCity = city.trim() || trimmedAddress.split(',').pop()?.trim() || trimmedName
+		const trimmedDistrict = district.trim()
+		const finalCode = (
+			code.trim() || (isEditing && branch?.code) || generateBranchCode(trimmedName)
+		)
+			.toUpperCase()
+			.slice(0, 10)
 
-			const updatedDay = {
-				isOpen: field === 'isOpen' ? (value as boolean) : currentDay.isOpen,
-				open: field === 'open' ? (value as string) : currentDay.open,
-				close: field === 'close' ? (value as string) : currentDay.close,
-			}
-
-			return {
-				...prev,
-				operatingHours: {
-					...prev.operatingHours,
-					[day]: updatedDay,
+		const payload: BranchFormData = {
+			name: trimmedName,
+			code: finalCode,
+			location: {
+				address: trimmedAddress,
+				city: trimmedCity,
+				district: trimmedDistrict,
+				coordinates: {
+					latitude: parsedLatitude,
+					longitude: parsedLongitude,
 				},
-			}
-		})
+			},
+			contact: { phone: '', email: '', manager: '' },
+			operatingHours: DEFAULT_OPERATING_HOURS,
+			capacity: DEFAULT_CAPACITY,
+			requirements: DEFAULT_REQUIREMENTS,
+			notes: '',
+		}
+
+		onSave(payload)
 	}
-
-	const toggleSkill = (skill: string) => {
-		setFormData(prev => {
-			const currentSkills = prev.requirements?.skillsRequired || []
-			const typedSkill = skill as
-				| 'cooking'
-				| 'cashier'
-				| 'cleaning'
-				| 'management'
-				| 'delivery'
-			const skillExists = currentSkills.includes(typedSkill)
-
-			return {
-				...prev,
-				requirements: {
-					...prev.requirements!,
-					skillsRequired: skillExists
-						? currentSkills.filter(s => s !== skill)
-						: [...currentSkills, typedSkill],
-				},
-			}
-		})
-	}
-
-	const days = [
-		{ key: 'monday', label: 'Monday' },
-		{ key: 'tuesday', label: 'Tuesday' },
-		{ key: 'wednesday', label: 'Wednesday' },
-		{ key: 'thursday', label: 'Thursday' },
-		{ key: 'friday', label: 'Friday' },
-		{ key: 'saturday', label: 'Saturday' },
-		{ key: 'sunday', label: 'Sunday' },
-	]
-
-	const skills = ['cooking', 'cashier', 'cleaning', 'management', 'delivery']
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className='bg-[#0E1422] text-white border-none sm:max-w-[800px] max-h-[90vh] overflow-y-auto'>
+			<DialogContent className='bg-[#0E1422] text-white border-none sm:max-w-[640px] max-h-[90vh] overflow-y-auto'>
 				<DialogHeader>
 					<DialogTitle className='text-xl font-semibold text-white'>
-						{isEditing ? 'Edit Branch' : 'Add New Branch'}
+						{isEditing ? 'Edit Branch' : 'New Branch'}
 					</DialogTitle>
+					<p className='text-sm text-gray-400'>
+						Branch nomi va lokatsiyasini kiriting. Boshqa sozlamalar default holida saqlanadi.
+					</p>
 				</DialogHeader>
-				<form onSubmit={handleSubmit} className='space-y-6 mt-4'>
-					{/* Basic Information */}
-					<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-						<div className='space-y-2'>
-							<Label htmlFor='name'>Branch Name *</Label>
-							<Input
-								id='name'
-								value={formData.name}
-								onChange={e =>
-									setFormData({ ...formData, name: e.target.value })
-								}
-								className='bg-[#1A1F2E] border-none text-white'
-								placeholder='Enter branch name'
-							/>
-						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='code'>Branch Code *</Label>
-							<Input
-								id='code'
-								value={formData.code}
-								onChange={e =>
-									setFormData({
-										...formData,
-										code: e.target.value.toUpperCase(),
-									})
-								}
-								className='bg-[#1A1F2E] border-none text-white'
-								placeholder='Enter branch code (e.g., BR01)'
-							/>
-						</div>
-					</div>
 
-					{/* Location */}
-					<div className='space-y-4'>
-						<h3 className='text-lg font-semibold'>Location Information</h3>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-							<div className='space-y-2'>
-								<Label htmlFor='address'>Address *</Label>
-								<Input
-									id='address'
-									value={formData.location.address}
-									onChange={e =>
-										setFormData({
-											...formData,
-											location: {
-												...formData.location,
-												address: e.target.value,
-											},
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-									placeholder='Enter full address'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='city'>City *</Label>
-								<Input
-									id='city'
-									value={formData.location.city}
-									onChange={e =>
-										setFormData({
-											...formData,
-											location: { ...formData.location, city: e.target.value },
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-									placeholder='Enter city'
-								/>
-							</div>
-						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='district'>District</Label>
-							<Input
-								id='district'
-								value={formData.location.district}
-								onChange={e =>
-									setFormData({
-										...formData,
-										location: {
-											...formData.location,
-											district: e.target.value,
-										},
-									})
-								}
-								className='bg-[#1A1F2E] border-none text-white'
-								placeholder='Enter district (optional)'
-							/>
-						</div>
-					</div>
-
-					{/* Contact Information */}
-					<div className='space-y-4'>
-						<h3 className='text-lg font-semibold'>Contact Information</h3>
-						<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-							<div className='space-y-2'>
-								<Label htmlFor='phone'>Phone</Label>
-								<Input
-									id='phone'
-									value={formData.contact?.phone}
-									onChange={e =>
-										setFormData({
-											...formData,
-											contact: { ...formData.contact!, phone: e.target.value },
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-									placeholder='Enter phone number'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='email'>Email</Label>
-								<Input
-									id='email'
-									type='email'
-									value={formData.contact?.email}
-									onChange={e =>
-										setFormData({
-											...formData,
-											contact: { ...formData.contact!, email: e.target.value },
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-									placeholder='Enter email address'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='manager'>Manager</Label>
-								<Input
-									id='manager'
-									value={formData.contact?.manager}
-									onChange={e =>
-										setFormData({
-											...formData,
-											contact: {
-												...formData.contact!,
-												manager: e.target.value,
-											},
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-									placeholder='Enter manager name'
-								/>
-							</div>
-						</div>
-					</div>
-
-					{/* Capacity */}
-					<div className='space-y-4'>
-						<h3 className='text-lg font-semibold'>Capacity</h3>
-						<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-							<div className='space-y-2'>
-								<Label htmlFor='maxWorkers'>Max Workers</Label>
-								<Input
-									id='maxWorkers'
-									type='number'
-									min='1'
-									max='20'
-									value={formData.capacity?.maxWorkers}
-									onChange={e =>
-										setFormData({
-											...formData,
-											capacity: {
-												...formData.capacity!,
-												maxWorkers: parseInt(e.target.value) || 5,
-											},
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='maxRiders'>Max Riders</Label>
-								<Input
-									id='maxRiders'
-									type='number'
-									min='0'
-									max='10'
-									value={formData.capacity?.maxRiders}
-									onChange={e =>
-										setFormData({
-											...formData,
-											capacity: {
-												...formData.capacity!,
-												maxRiders: parseInt(e.target.value) || 2,
-											},
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='minimumStaff'>Minimum Staff</Label>
-								<Input
-									id='minimumStaff'
-									type='number'
-									min='1'
-									value={formData.requirements?.minimumStaff}
-									onChange={e =>
-										setFormData({
-											...formData,
-											requirements: {
-												...formData.requirements!,
-												minimumStaff: parseInt(e.target.value) || 2,
-											},
-										})
-									}
-									className='bg-[#1A1F2E] border-none text-white'
-								/>
-							</div>
-						</div>
-					</div>
-
-					{/* Required Skills */}
-					<div className='space-y-4'>
-						<h3 className='text-lg font-semibold'>Required Skills</h3>
-						<div className='flex flex-wrap gap-3'>
-							{skills.map(skill => (
-								<div key={skill} className='flex items-center space-x-2'>
-									<Checkbox
-										id={skill}
-										checked={
-											formData.requirements?.skillsRequired?.includes(
-												skill as
-													| 'cooking'
-													| 'cashier'
-													| 'cleaning'
-													| 'management'
-													| 'delivery'
-											) || false
-										}
-										onCheckedChange={() => toggleSkill(skill)}
-										className='border-white data-[state=checked]:bg-[#4E7BEE] data-[state=checked]:border-[#4E7BEE]'
-									/>
-									<Label
-										htmlFor={skill}
-										className='text-sm font-normal capitalize'
-									>
-										{skill}
-									</Label>
-								</div>
-							))}
-						</div>
-					</div>
-
-					{/* Operating Hours */}
-					<div className='space-y-4'>
-						<h3 className='text-lg font-semibold'>Operating Hours</h3>
-						<div className='space-y-3'>
-							{days.map(({ key, label }) => {
-								const daySchedule =
-									formData.operatingHours?.[
-										key as keyof typeof formData.operatingHours
-									]
-								return (
-									<div
-										key={key}
-										className='flex items-center gap-4 p-3 bg-[#1A1F2E] rounded-lg'
-									>
-										<div className='w-20'>
-											<Checkbox
-												id={`${key}-open`}
-												checked={daySchedule?.isOpen || false}
-												onCheckedChange={checked =>
-													updateDaySchedule(key, 'isOpen', checked)
-												}
-												className='border-white data-[state=checked]:bg-[#4E7BEE] data-[state=checked]:border-[#4E7BEE] mr-2'
-											/>
-											<Label htmlFor={`${key}-open`} className='text-sm'>
-												{label}
-											</Label>
-										</div>
-										{daySchedule?.isOpen && (
-											<>
-												<div className='space-y-1'>
-													<Label className='text-xs'>Open</Label>
-													<Input
-														type='time'
-														value={daySchedule.open}
-														onChange={e =>
-															updateDaySchedule(key, 'open', e.target.value)
-														}
-														className='bg-[#0E1422] border-none text-white w-32'
-													/>
-												</div>
-												<div className='space-y-1'>
-													<Label className='text-xs'>Close</Label>
-													<Input
-														type='time'
-														value={daySchedule.close}
-														onChange={e =>
-															updateDaySchedule(key, 'close', e.target.value)
-														}
-														className='bg-[#0E1422] border-none text-white w-32'
-													/>
-												</div>
-											</>
-										)}
-									</div>
-								)
-							})}
-						</div>
-					</div>
-
-					{/* Notes */}
+				<form onSubmit={handleSubmit} className='mt-4 space-y-5'>
 					<div className='space-y-2'>
-						<Label htmlFor='notes'>Notes</Label>
-						<Textarea
-							id='notes'
-							value={formData.notes}
-							onChange={e =>
-								setFormData({ ...formData, notes: e.target.value })
-							}
+						<Label htmlFor='name'>Branch Name *</Label>
+						<Input
+							id='name'
+							value={name}
+							onChange={event => setName(event.target.value)}
 							className='bg-[#1A1F2E] border-none text-white'
-							placeholder='Additional notes about the branch...'
-							rows={3}
+							placeholder='e.g., King Kebab Konkuk'
+							autoFocus
 						/>
 					</div>
 
-					{error && <p className='text-red-500 text-sm'>{error}</p>}
+					<div className='space-y-2'>
+						<Label htmlFor='address'>Search by address (optional)</Label>
+						<div className='flex gap-2'>
+							<Input
+								id='address'
+								value={address}
+								onChange={event => setAddress(event.target.value)}
+								className='bg-[#1A1F2E] border-none text-white'
+								placeholder='e.g., Konkuk Univ. Station, Seoul'
+								onKeyDown={event => {
+									if (event.key === 'Enter') {
+										event.preventDefault()
+										handleSearchAddress()
+									}
+								}}
+							/>
+							<Button
+								type='button'
+								onClick={handleSearchAddress}
+								disabled={searching}
+								className='bg-[#4E7BEE] hover:bg-[#4E7BEE]/90'
+							>
+								{searching ? (
+									<Loader2 className='h-4 w-4 animate-spin' />
+								) : (
+									<Search className='h-4 w-4' />
+								)}
+							</Button>
+						</div>
+					</div>
 
-					<div className='flex justify-end gap-3 pt-4'>
+					<div className='grid grid-cols-2 gap-4'>
+						<div className='space-y-2'>
+							<Label htmlFor='latitude'>Latitude *</Label>
+							<Input
+								id='latitude'
+								type='number'
+								step='any'
+								min='-90'
+								max='90'
+								value={latitude}
+								onChange={event => setLatitude(event.target.value)}
+								className='bg-[#1A1F2E] border-none text-white'
+								placeholder='37.5665'
+							/>
+						</div>
+						<div className='space-y-2'>
+							<Label htmlFor='longitude'>Longitude *</Label>
+							<Input
+								id='longitude'
+								type='number'
+								step='any'
+								min='-180'
+								max='180'
+								value={longitude}
+								onChange={event => setLongitude(event.target.value)}
+								className='bg-[#1A1F2E] border-none text-white'
+								placeholder='126.9780'
+							/>
+						</div>
+					</div>
+
+					<div className='space-y-2'>
+						<div className='flex items-center justify-between gap-3'>
+							<Label>Pick location on map</Label>
+							<p className='text-xs text-gray-400'>Click the map to set the pin</p>
+						</div>
+						<BranchLocationPicker
+							value={
+								selectedCoordinates &&
+								!Number.isNaN(selectedCoordinates.latitude) &&
+								!Number.isNaN(selectedCoordinates.longitude)
+									? selectedCoordinates
+									: undefined
+							}
+							onChange={coordinates => {
+								setLatitude(coordinates.latitude.toFixed(6))
+								setLongitude(coordinates.longitude.toFixed(6))
+							}}
+						/>
+					</div>
+
+					{error && <p className='text-sm text-red-500'>{error}</p>}
+
+					<div className='flex justify-end gap-3 pt-2'>
 						<Button
 							type='button'
 							onClick={onClose}

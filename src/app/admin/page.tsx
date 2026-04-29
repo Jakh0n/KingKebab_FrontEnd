@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Bell,
   Bike,
+  Building2,
   CalendarDays,
   ChefHat,
   ChevronRight,
@@ -457,6 +458,13 @@ export default function AdminPage() {
                 >
                   <ClipboardList className="mr-2 h-4 w-4 text-teal-500" />
                   <span>Menu Survey</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => router.push("/admin/branches")}
+                >
+                  <Building2 className="mr-2 h-4 w-4 text-primary" />
+                  <span>Branches Map</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4 text-primary" />

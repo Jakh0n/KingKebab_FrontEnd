@@ -9,9 +9,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CalendarDays, LogOut, MoreHorizontal, User } from 'lucide-react'
+import { LogOut, MapPin, MoreHorizontal, User } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export interface DashboardUserData {
@@ -26,8 +25,6 @@ interface DashboardHeaderProps {
 	onLogout: () => void
 	logoutLoading: boolean
 }
-
-const SCHEDULE_URL = 'https://kingschadule.netlify.app'
 
 function positionLabel(position?: string): string {
 	switch (position) {
@@ -74,23 +71,22 @@ export function DashboardHeader({
 					</div>
 				</div>
 
-				<nav className='hidden items-center gap-2 sm:flex'>
-					<ModeToggle compact className='mr-1' />
-					<Button asChild variant='ghost' size='sm' className='rounded-full'>
-						<Link
-							href={SCHEDULE_URL}
-							target='_blank'
-							rel='noopener noreferrer'
-							className='inline-flex items-center'
-						>
-							<CalendarDays className='h-4 w-4' />
-							Schedule
-						</Link>
+				<nav className='hidden items-center gap-1.5 sm:flex'>
+					<ModeToggle compact className='mr-0.5' />
+					<Button
+						variant='ghost'
+						size='sm'
+						className='rounded-full px-3.5'
+						onClick={() => router.push('/dashboard/branches')}
+						disabled={logoutLoading}
+					>
+						<MapPin className='h-4 w-4' />
+						Branches
 					</Button>
 					<Button
 						variant='ghost'
 						size='sm'
-						className='rounded-full'
+						className='rounded-full px-3.5'
 						onClick={() => router.push('/dashboard/profile')}
 						disabled={logoutLoading}
 					>
@@ -100,7 +96,7 @@ export function DashboardHeader({
 					<Button
 						variant='destructive'
 						size='sm'
-						className='rounded-full'
+						className='rounded-full px-3.5'
 						onClick={onLogout}
 						disabled={logoutLoading}
 					>
@@ -118,7 +114,16 @@ export function DashboardHeader({
 					</Button>
 				</nav>
 
-				<div className='flex items-center gap-2 sm:hidden'>
+				<div className='flex items-center gap-1.5 sm:hidden'>
+					<Button
+						variant='ghost'
+						size='icon'
+						aria-label='Branches'
+						onClick={() => router.push('/dashboard/branches')}
+						disabled={logoutLoading}
+					>
+						<MapPin className='h-5 w-5' />
+					</Button>
 					<ModeToggle compact />
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
@@ -127,17 +132,6 @@ export function DashboardHeader({
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end' className='w-56'>
-							<DropdownMenuItem asChild>
-								<Link
-									href={SCHEDULE_URL}
-									target='_blank'
-									rel='noopener noreferrer'
-									className='flex items-center'
-								>
-									<CalendarDays className='mr-2 h-4 w-4' />
-									Schedule
-								</Link>
-							</DropdownMenuItem>
 							<DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
 								<User className='mr-2 h-4 w-4' />
 								Profile

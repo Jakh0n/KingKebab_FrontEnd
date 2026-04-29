@@ -4,6 +4,7 @@ import Footer from '@/components/shared/footer'
 import { ThemeColorSync } from '@/components/theme/theme-color-sync'
 import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'sonner'
+import 'leaflet/dist/leaflet.css'
 import './globals.css'
 
 export const metadata: Metadata = {
