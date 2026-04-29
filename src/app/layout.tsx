@@ -1,5 +1,7 @@
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
+import { ThemeProvider } from '@/components/providers/theme-provider'
 import Footer from '@/components/shared/footer'
+import { ThemeColorSync } from '@/components/theme/theme-color-sync'
 import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'sonner'
 import './globals.css'
@@ -53,10 +55,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
 	return (
 		<html lang='en' suppressHydrationWarning>
 			<body className='min-h-screen bg-background font-sans text-foreground'>
-				<ServiceWorkerRegistration />
-				{children}
-				<Footer />
-				<Toaster richColors position='top-center' />
+				<ThemeProvider attribute='class' defaultTheme='light' enableSystem={false} disableTransitionOnChange>
+					<ThemeColorSync />
+					<ServiceWorkerRegistration />
+					{children}
+					<Footer />
+					<Toaster richColors position='top-center' closeButton />
+				</ThemeProvider>
 			</body>
 		</html>
 	)

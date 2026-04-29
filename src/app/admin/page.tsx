@@ -1,5 +1,6 @@
 "use client";
 
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -334,11 +335,11 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen p-2 sm:p-4 bg-[#0A0F1C]">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-center h-screen">
+      <main className="min-h-screen bg-background p-2 sm:p-4">
+        <div className="mx-auto flex h-screen max-w-[1400px] items-center justify-center">
           <div className="flex flex-col items-center gap-2">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#4E7BEE]"></div>
-            <p className="text-white text-sm">Loading...</p>
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           </div>
         </div>
       </main>
@@ -346,20 +347,20 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen p-2 sm:p-4 lg:p-6 bg-[#0A0F1C]">
-      <div className="max-w-7xl mx-auto space-y-4">
+    <main className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 bg-[#0E1422] p-3 sm:p-4 rounded-lg">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-border bg-card p-3 shadow-card sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+          <div className="flex w-full items-center gap-4 sm:w-auto">
             <Image
               src="/cropped-kinglogo.avif"
               alt="King Kebab Logo"
-              className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+              className="h-10 w-10 object-contain sm:h-12 sm:w-12"
               width={100}
               height={100}
             />
             <div>
-              <h1 className="text-base sm:text-lg md:text-2xl font-bold text-white">
+              <h1 className="text-base font-semibold tracking-tight text-foreground sm:text-lg md:text-2xl">
                 King Kebab | Admin Panel
               </h1>
             </div>
@@ -368,7 +369,7 @@ export default function AdminPage() {
           <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-2 flex-1 sm:flex-auto">
               <select
-                className="bg-[#1A1F2E] text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-[140px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer"
+                className="w-full cursor-pointer rounded-xl border border-border bg-muted px-2 py-2 text-xs text-foreground outline-none transition-all focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 sm:w-[140px] sm:px-4 sm:text-sm"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
               >
@@ -380,7 +381,7 @@ export default function AdminPage() {
               </select>
 
               <select
-                className="bg-[#1A1F2E] text-white px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm w-[80px] sm:w-[100px] border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all cursor-pointer"
+                className="w-[80px] cursor-pointer rounded-xl border border-border bg-muted px-2 py-2 text-xs text-foreground outline-none transition-all focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 sm:w-[100px] sm:px-4 sm:text-sm"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               >
@@ -395,108 +396,109 @@ export default function AdminPage() {
               </select>
             </div>
 
+            <ModeToggle compact className="hidden shrink-0 sm:flex" />
             {/* Admin Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 sm:h-10 sm:w-10 bg-[#1A1F2E] hover:bg-[#2A3447] flex-shrink-0"
+                  className="h-9 w-9 shrink-0 bg-muted hover:bg-accent sm:h-10 sm:w-10"
                 >
-                  <Menu className="h-4 w-4 sm:h-5 sm:w-5 text-[#4E7BEE]" />
+                  <Menu className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-56 bg-[#1A1F2E] border-[#2A3447] text-white"
-              >
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={() => setIsAddModalOpen(true)}
                 >
-                  <UserPlus className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
+                  <UserPlus className="mr-2 h-4 w-4 text-teal-500" />
                   <span>Add Worker</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={() => {
                     setEditingAnnouncement(null);
                     setIsAnnouncementModalOpen(true);
                   }}
                 >
-                  <Bell className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
+                  <Bell className="mr-2 h-4 w-4 text-teal-500" />
                   <span>Add Announcement</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={() => window.open("https://kingschadule.netlify.app", "_blank", "noopener,noreferrer")}
                 >
-                  <ExternalLink className="mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80" />
+                  <ExternalLink className="mr-2 h-4 w-4 text-primary" />
                   <span>Schedule</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={handleDownloadExcel}
                 >
-                  <Download className="mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80" />
+                  <Download className="mr-2 h-4 w-4 text-primary" />
                   <span>Download Excel (All)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={handleDownloadMonthlyExcel}
                 >
-                  <CalendarDays className="mr-2 h-4 w-4 text-purple-400 group-hover:text-purple-400/80" />
+                  <CalendarDays className="mr-2 h-4 w-4 text-violet-500" />
                   <span>Download Monthly Users</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group"
+                  className="cursor-pointer"
                   onClick={() => router.push("/admin/survey")}
                 >
-                  <ClipboardList className="mr-2 h-4 w-4 text-[#4CC4C0] group-hover:text-[#4CC4C0]/80" />
+                  <ClipboardList className="mr-2 h-4 w-4 text-teal-500" />
                   <span>Menu Survey</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-[#2A3447] cursor-pointer group">
-                  <Settings className="mr-2 h-4 w-4 text-[#4E7BEE] group-hover:text-[#4E7BEE]/80" />
+                <DropdownMenuItem className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4 text-primary" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-[#2A3447]" />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="hover:bg-[#2A3447] cursor-pointer group text-[#FF3B6F] focus:text-[#FF3B6F]"
+                  className="cursor-pointer text-destructive focus:text-destructive"
                   onClick={handleLogout}
                 >
-                  <LogOut className="mr-2 h-4 w-4 group-hover:text-[#FF3B6F]/80" />
+                  <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <div className="flex shrink-0 sm:hidden">
+              <ModeToggle compact />
+            </div>
           </div>
         </div>
 
         {/* Main Content */}
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <Card className="border-border bg-card p-4 text-card-foreground shadow-card transition-shadow duration-300 hover:shadow-card-hover sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="bg-[#4E7BEE]/10 p-3 rounded-xl">
-                  <Users className="w-6 h-6 text-[#4E7BEE]" />
+                <div className="rounded-xl bg-primary/10 p-3">
+                  <Users className="h-6 w-6 text-primary" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-gray-400 text-sm mb-1">Total Staff</h3>
-                  <p className="text-2xl font-bold text-[#4E7BEE]">
+                <div className="min-w-0 flex-1">
+                  <h3 className="mb-1 text-sm text-muted-foreground">Total Staff</h3>
+                  <p className="text-2xl font-bold tracking-tight text-primary">
                     {Object.values(workerStats).length}
                   </p>
                 </div>
               </div>
             </Card>
-            <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300">
+            <Card className="border-border bg-card p-4 text-card-foreground shadow-card transition-shadow duration-300 hover:shadow-card-hover sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="bg-[#4CC4C0]/10 p-3 rounded-xl">
-                  <ChefHat className="w-6 h-6 text-[#4CC4C0]" />
+                <div className="rounded-xl bg-teal-500/10 p-3">
+                  <ChefHat className="h-6 w-6 text-teal-600 dark:text-teal-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-gray-400 text-sm mb-1">Worker(s)</h3>
-                  <p className="text-2xl font-bold text-[#4CC4C0]">
+                <div className="min-w-0 flex-1">
+                  <h3 className="mb-1 text-sm text-muted-foreground">Worker(s)</h3>
+                  <p className="text-2xl font-bold tracking-tight text-teal-600 dark:text-teal-400">
                     {
                       Object.values(workerStats).filter(
                         (w) => w.position === "worker",
@@ -506,14 +508,14 @@ export default function AdminPage() {
                 </div>
               </div>
             </Card>
-            <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300">
+            <Card className="border-border bg-card p-4 text-card-foreground shadow-card transition-shadow duration-300 hover:shadow-card-hover sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="bg-[#9B5DE5]/10 p-3 rounded-xl">
-                  <Bike className="w-6 h-6 text-[#9B5DE5]" />
+                <div className="rounded-xl bg-violet-500/10 p-3">
+                  <Bike className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-gray-400 text-sm mb-1">Rider(s)</h3>
-                  <p className="text-2xl font-bold text-[#9B5DE5]">
+                <div className="min-w-0 flex-1">
+                  <h3 className="mb-1 text-sm text-muted-foreground">Rider(s)</h3>
+                  <p className="text-2xl font-bold tracking-tight text-violet-600 dark:text-violet-400">
                     {
                       Object.values(workerStats).filter(
                         (w) => w.position === "rider",
@@ -523,14 +525,14 @@ export default function AdminPage() {
                 </div>
               </div>
             </Card>
-            <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5 hover:bg-[#1A1F2E] transition-all duration-300">
+            <Card className="border-border bg-card p-4 text-card-foreground shadow-card transition-shadow duration-300 hover:shadow-card-hover sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="bg-purple-500/10 p-3 rounded-xl">
-                  <CalendarDays className="w-6 h-6 text-purple-400" />
+                <div className="rounded-xl bg-purple-500/10 p-3">
+                  <CalendarDays className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-gray-400 text-sm mb-1">Monthly</h3>
-                  <p className="text-2xl font-bold text-purple-400">
+                <div className="min-w-0 flex-1">
+                  <h3 className="mb-1 text-sm text-muted-foreground">Monthly</h3>
+                  <p className="text-2xl font-bold tracking-tight text-purple-600 dark:text-purple-400">
                     {
                       Object.values(workerStats).filter(
                         (w) => w.position === "monthly",
@@ -543,10 +545,10 @@ export default function AdminPage() {
           </div>
 
           {/* Announcements */}
-          <Card className="bg-[#0E1422] border-none text-white p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Bell className="w-5 h-5 text-[#4CC4C0]" />
+          <Card className="border-border bg-card p-4 text-card-foreground sm:p-5">
+            <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <Bell className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                 Announcements
               </h2>
               <Button
@@ -554,62 +556,62 @@ export default function AdminPage() {
                   setEditingAnnouncement(null);
                   setIsAnnouncementModalOpen(true);
                 }}
-                className="bg-[#4CC4C0] hover:bg-[#4CC4C0]/90 text-white"
+                className="rounded-full bg-teal-600 text-primary-foreground hover:bg-teal-600/90 dark:bg-teal-500 dark:hover:bg-teal-500/90"
               >
                 Add Announcement
               </Button>
             </div>
-            <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
+            <div className="custom-scrollbar max-h-[280px] space-y-3 overflow-y-auto pr-2">
               {announcements.length === 0 ? (
-                <p className="text-gray-500 text-sm py-4">
+                <p className="py-4 text-sm text-muted-foreground">
                   No announcements yet. Add one to show on the dashboard.
                 </p>
               ) : (
                 announcements.map((a) => {
                   const typeColor =
                     a.type === "info"
-                      ? "text-[#4E7BEE]"
+                      ? "text-primary"
                       : a.type === "warning"
-                        ? "text-yellow-500"
-                        : "text-[#4CC4C0]";
+                        ? "text-yellow-600 dark:text-yellow-500"
+                        : "text-teal-600 dark:text-teal-400";
                   return (
                     <div
                       key={a._id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#1A1F2E] p-3 rounded-lg border border-[#2A3447]"
+                      className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-muted/50 p-3 sm:flex-row sm:items-center"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <FileText className={`w-4 h-4 flex-shrink-0 ${typeColor}`} />
-                          <p className="font-medium truncate">{a.title}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <FileText className={`h-4 w-4 shrink-0 ${typeColor}`} />
+                          <p className="truncate font-medium">{a.title}</p>
                           <span
-                            className={`text-xs px-2 py-0.5 rounded ${typeColor} bg-white/5`}
+                            className={`rounded-md px-2 py-0.5 text-xs ${typeColor} bg-foreground/5`}
                           >
                             {a.type}
                           </span>
                           {!a.isActive && (
-                            <span className="text-xs text-gray-500">(hidden)</span>
+                            <span className="text-xs text-muted-foreground">(hidden)</span>
                           )}
                         </div>
-                        <p className="text-gray-400 text-sm mt-1 line-clamp-2">
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                           {a.content}
                         </p>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex shrink-0 gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-[#4E7BEE] hover:bg-[#4E7BEE]/10"
+                          className="h-9 w-9 text-primary hover:bg-primary/10"
                           onClick={() => {
                             setEditingAnnouncement(a);
                             setIsAnnouncementModalOpen(true);
                           }}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-red-500 hover:bg-red-500/10"
+                          className="h-9 w-9 text-destructive hover:bg-destructive/10"
                           onClick={async () => {
                             if (!confirm("Delete this announcement?")) return;
                             try {
@@ -638,7 +640,7 @@ export default function AdminPage() {
           {/* Main Content */}
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Workers List */}
-            <div className="w-full lg:w-1/3 bg-[#0E1422] rounded-lg p-3 sm:p-4">
+            <div className="w-full rounded-2xl border border-border bg-card p-3 sm:p-4 lg:w-1/3">
               {/* Search Input */}
               <div className="relative mb-4">
                 <input
@@ -646,77 +648,77 @@ export default function AdminPage() {
                   placeholder="Search workers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#1A1F2E] text-white pl-9 pr-4 py-2.5 rounded-lg text-sm border border-gray-700 focus:border-[#4E7BEE] focus:ring-1 focus:ring-[#4E7BEE] outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted py-2.5 pl-9 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
                 />
                 <Search
                   size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
               </div>
 
-              <div className="h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)] overflow-y-auto custom-scrollbar pr-2 space-y-3">
+              <div className="custom-scrollbar h-[calc(100vh-380px)] space-y-3 overflow-y-auto pr-2 sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)]">
                 {filteredWorkers.map((worker) => (
                   <Card
                     key={worker.id}
-                    className={`border-none text-white p-3 sm:p-4 cursor-pointer transition-all hover:bg-[#1A1F2E] ${
+                    className={`cursor-pointer border border-transparent p-3 transition-all hover:bg-muted/80 sm:p-4 ${
                       selectedWorker === worker.id
-                        ? "bg-[#1A1F2E] ring-2 ring-[#4E7BEE]"
-                        : "bg-[#0A0F1C]"
+                        ? "bg-muted ring-2 ring-primary ring-offset-2 ring-offset-background"
+                        : "bg-background"
                     }`}
                     onClick={() => setSelectedWorker(worker.id)}
                   >
                     <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-start">
+                      <div className="flex items-start justify-between">
                         <div>
-                          <h2 className="text-base sm:text-lg font-semibold mb-0.5 sm:mb-1 flex items-center gap-2">
+                          <h2 className="mb-0.5 flex items-center gap-2 text-base font-semibold tracking-tight text-card-foreground sm:mb-1 sm:text-lg">
                             {worker.position === "worker" ? (
-                              <ChefHat size={16} className="text-[#4CC4C0]" />
+                              <ChefHat size={16} className="text-teal-600 dark:text-teal-400" />
                             ) : worker.position === "rider" ? (
-                              <Bike size={16} className="text-[#9B5DE5]" />
+                              <Bike size={16} className="text-violet-600 dark:text-violet-400" />
                             ) : (
                               <CalendarDays
                                 size={16}
-                                className="text-purple-400"
+                                className="text-purple-600 dark:text-purple-400"
                               />
                             )}
                             {worker.username}
                           </h2>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                            <p className="text-gray-400 text-xs sm:text-sm">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                            <p className="text-xs text-muted-foreground sm:text-sm">
                               {worker.position === "worker"
                                 ? "Worker"
                                 : worker.position === "rider"
                                   ? "Rider"
                                   : "Monthly"}
                             </p>
-                            <span className="px-2 py-0.5 bg-[#4E7BEE]/10 text-[#4E7BEE] text-xs rounded border border-[#4E7BEE]/20">
+                            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary">
                               ID: {worker.employeeId || "N/A"}
                             </span>
                           </div>
                         </div>
-                        <div className="bg-[#4E7BEE]/10 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5">
-                          <Clock size={12} className="text-[#4E7BEE]" />
-                          <p className="text-[#4E7BEE] font-medium text-xs sm:text-sm">
+                        <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 sm:px-3 sm:py-1.5">
+                          <Clock size={12} className="text-primary" />
+                          <p className="text-xs font-medium text-primary sm:text-sm">
                             {worker.totalHours.toFixed(1)}h
                           </p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                        <div className="bg-[#1A1F2E] p-2 sm:p-3 rounded-lg">
-                          <p className="text-gray-400 text-xs mb-0.5 sm:mb-1 flex items-center gap-1">
+                        <div className="rounded-lg bg-muted p-2 sm:p-3">
+                          <p className="mb-0.5 flex items-center gap-1 text-xs text-muted-foreground sm:mb-1">
                             <CalendarDays size={12} />
                             Regular
                           </p>
-                          <p className="text-[#4CC4C0] font-semibold text-sm">
+                          <p className="text-sm font-semibold text-teal-600 dark:text-teal-400">
                             {worker.regularDays}d
                           </p>
                         </div>
-                        <div className="bg-[#1A1F2E] p-2 sm:p-3 rounded-lg">
-                          <p className="text-gray-400 text-xs mb-0.5 sm:mb-1 flex items-center gap-1">
+                        <div className="rounded-lg bg-muted p-2 sm:p-3">
+                          <p className="mb-0.5 flex items-center gap-1 text-xs text-muted-foreground sm:mb-1">
                             <Timer size={12} />
                             Overtime
                           </p>
-                          <p className="text-[#9B5DE5] font-semibold text-sm">
+                          <p className="text-sm font-semibold text-violet-600 dark:text-violet-400">
                             {worker.overtimeDays}d
                           </p>
                         </div>
@@ -729,15 +731,17 @@ export default function AdminPage() {
 
             {/* Worker Details */}
             <div className="w-full lg:w-2/3">
-              <Card className="bg-[#0E1422] border-none text-white p-3 sm:p-4 lg:p-6 h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)]">
+              <Card className="h-[calc(100vh-380px)] border-border bg-card p-3 text-card-foreground sm:h-[calc(100vh-320px)] sm:p-4 lg:h-[calc(100vh-230px)] lg:p-6">
                 {selectedWorkerData ? (
-                  <div className="h-full flex flex-col">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                      <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <div className="flex h-full flex-col">
+                    <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:flex-row sm:items-center sm:gap-4">
+                      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
                         {selectedWorkerData.position === "worker" ? (
-                          <ChefHat size={20} className="text-[#4CC4C0]" />
+                          <ChefHat size={20} className="text-teal-600 dark:text-teal-400" />
+                        ) : selectedWorkerData.position === "rider" ? (
+                          <Bike size={20} className="text-violet-600 dark:text-violet-400" />
                         ) : (
-                          <Bike size={20} className="text-[#9B5DE5]" />
+                          <CalendarDays size={20} className="text-purple-600 dark:text-purple-400" />
                         )}
                         {selectedWorkerData.username}
                       </h2>
@@ -757,7 +761,7 @@ export default function AdminPage() {
 											<span className='sm:hidden'>PDF</span>
 										</Button> */}
                     </div>
-                    <div className="space-y-2 sm:space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1">
+                    <div className="custom-scrollbar flex-1 space-y-2 overflow-y-auto pr-2 sm:space-y-3">
                       {filteredEntries
                         .filter(
                           (entry) =>
@@ -768,24 +772,24 @@ export default function AdminPage() {
                           return (
                             <div
                               key={entry._id}
-                              className={`bg-[#1A1F2E] p-4 rounded-lg transition-all duration-300 border ${
+                              className={`rounded-xl border p-4 transition-colors duration-200 ${
                                 isOvertime
-                                  ? "border-yellow-500/20"
-                                  : "border-gray-800"
-                              } hover:bg-[#242B3D]`}
+                                  ? "border-yellow-500/25 bg-muted/40 hover:bg-muted/60"
+                                  : "border-border bg-muted/30 hover:bg-muted/50"
+                              }`}
                             >
                               <div className="flex flex-col gap-4">
                                 {/* Sana va Soatlar */}
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
-                                    <div className="bg-[#4E7BEE]/10 p-2.5 rounded-lg">
-                                      <CalendarDays className="w-5 h-5 text-[#4E7BEE]" />
+                                    <div className="rounded-lg bg-primary/10 p-2.5">
+                                      <CalendarDays className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-400">
+                                      <p className="text-sm text-muted-foreground">
                                         Date
                                       </p>
-                                      <p className="font-medium">
+                                      <p className="font-medium text-foreground">
                                         {new Date(
                                           entry.date,
                                         ).toLocaleDateString("en-US", {
@@ -798,7 +802,7 @@ export default function AdminPage() {
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
                                     <div
-                                      className={`px-3 py-1 rounded-full ${
+                                      className={`rounded-full px-3 py-1 ${
                                         isOvertime
                                           ? "bg-yellow-500/10"
                                           : "bg-emerald-500/10"
@@ -807,29 +811,29 @@ export default function AdminPage() {
                                       <p
                                         className={`text-sm font-medium ${
                                           isOvertime
-                                            ? "text-yellow-500"
-                                            : "text-emerald-500"
+                                            ? "text-yellow-600 dark:text-yellow-500"
+                                            : "text-emerald-600 dark:text-emerald-500"
                                         }`}
                                       >
                                         {isOvertime ? "Overtime" : "Regular"}
                                       </p>
                                     </div>
-                                    <p className="text-[#4E7BEE] text-sm font-medium">
+                                    <p className="text-sm font-medium text-primary">
                                       {entry.hours.toFixed(1)} hours
                                     </p>
                                   </div>
                                 </div>
 
                                 {/* Ish vaqti */}
-                                <div className="flex items-center gap-3 bg-[#0E1422] p-3 rounded-lg">
-                                  <div className="bg-[#4CC4C0]/10 p-2.5 rounded-lg">
-                                    <Clock className="w-5 h-5 text-[#4CC4C0]" />
+                                <div className="flex items-center gap-3 rounded-xl bg-background/80 p-3 ring-1 ring-border/60">
+                                  <div className="rounded-lg bg-teal-500/10 p-2.5">
+                                    <Clock className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                                   </div>
                                   <div>
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-muted-foreground">
                                       Working Hours
                                     </p>
-                                    <p className="font-medium text-[#4CC4C0]">
+                                    <p className="font-medium text-teal-600 dark:text-teal-400">
                                       {formatTime(entry.startTime)} -{" "}
                                       {formatTime(entry.endTime)}
                                     </p>
@@ -838,16 +842,16 @@ export default function AdminPage() {
 
                                 {/* Overtime ma'lumotlari */}
                                 {isOvertime && entry.overtimeReason && (
-                                  <div className="bg-yellow-500/5 p-4 rounded-lg border border-yellow-500/10 space-y-3">
+                                  <div className="space-y-3 rounded-xl border border-yellow-500/15 bg-yellow-500/5 p-4">
                                     <div className="flex items-center gap-3">
-                                      <div className="bg-yellow-500/10 p-2.5 rounded-lg">
-                                        <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                                      <div className="rounded-lg bg-yellow-500/10 p-2.5">
+                                        <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
                                       </div>
                                       <div>
-                                        <p className="text-sm text-gray-400">
+                                        <p className="text-sm text-muted-foreground">
                                           Overtime Reason
                                         </p>
-                                        <p className="font-medium text-yellow-500">
+                                        <p className="font-medium text-yellow-600 dark:text-yellow-500">
                                           {entry.overtimeReason}
                                         </p>
                                       </div>
@@ -856,15 +860,15 @@ export default function AdminPage() {
                                     {entry.overtimeReason ===
                                       "Company Request" &&
                                       entry.responsiblePerson && (
-                                        <div className="flex items-center gap-3 pt-2 border-t border-yellow-500/10">
-                                          <div className="bg-blue-500/10 p-2.5 rounded-lg">
-                                            <User className="w-5 h-5 text-blue-500" />
+                                        <div className="flex items-center gap-3 border-t border-yellow-500/15 pt-2">
+                                          <div className="rounded-lg bg-blue-500/10 p-2.5">
+                                            <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                           </div>
                                           <div>
-                                            <p className="text-sm text-gray-400">
+                                            <p className="text-sm text-muted-foreground">
                                               Responsible Person
                                             </p>
-                                            <p className="font-medium text-blue-500">
+                                            <p className="font-medium text-blue-600 dark:text-blue-400">
                                               {entry.responsiblePerson}
                                             </p>
                                           </div>
@@ -879,8 +883,8 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-center text-gray-400 flex items-center justify-center gap-2 h-full text-sm">
-                    <ChevronRight size={18} />
+                  <p className="flex h-full items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+                    <ChevronRight size={18} aria-hidden />
                     Select a worker to view details
                   </p>
                 )}

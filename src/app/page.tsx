@@ -1,3 +1,4 @@
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
@@ -5,7 +6,10 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-24">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(ellipse_at_center,_hsl(var(--primary)/0.08),_transparent_60%)]" />
+      <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-8">
+        <ModeToggle />
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(ellipse_at_center,_hsl(var(--primary)/0.08),_transparent_60%)] dark:bg-[radial-gradient(ellipse_at_center,_hsl(var(--primary)/0.12),_transparent_55%)]" />
 
       <section className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
         <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl border border-border/60 bg-card/80 p-2 shadow-sm backdrop-blur-sm">

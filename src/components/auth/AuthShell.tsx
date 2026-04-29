@@ -1,3 +1,4 @@
+import { ModeToggle } from '@/components/ui/mode-toggle'
 import Image from 'next/image'
 import type { ReactNode } from 'react'
 
@@ -10,7 +11,10 @@ interface AuthShellProps {
 
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
 	return (
-		<main className='flex min-h-screen items-center justify-center px-4 py-12'>
+		<main className='relative flex min-h-screen items-center justify-center px-4 py-12'>
+			<div className='absolute right-4 top-4 z-20 sm:right-6 sm:top-6'>
+				<ModeToggle compact />
+			</div>
 			<div className='w-full max-w-sm'>
 				<div className='mb-10 flex flex-col items-center text-center'>
 					<div className='mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-border/60 bg-card/80 p-2 shadow-sm backdrop-blur-sm'>

@@ -1,5 +1,6 @@
 'use client'
 
+import { ModeToggle } from '@/components/ui/mode-toggle'
 import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
@@ -74,6 +75,7 @@ export function DashboardHeader({
 				</div>
 
 				<nav className='hidden items-center gap-2 sm:flex'>
+					<ModeToggle compact className='mr-1' />
 					<Button asChild variant='ghost' size='sm' className='rounded-full'>
 						<Link
 							href={SCHEDULE_URL}
@@ -116,44 +118,42 @@ export function DashboardHeader({
 					</Button>
 				</nav>
 
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='sm:hidden'
-							aria-label='Open menu'
-						>
-							<MoreHorizontal className='h-5 w-5' />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align='end' className='w-56'>
-						<DropdownMenuItem asChild>
-							<Link
-								href={SCHEDULE_URL}
-								target='_blank'
-								rel='noopener noreferrer'
-								className='flex items-center'
+				<div className='flex items-center gap-2 sm:hidden'>
+					<ModeToggle compact />
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant='ghost' size='icon' aria-label='Open menu'>
+								<MoreHorizontal className='h-5 w-5' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end' className='w-56'>
+							<DropdownMenuItem asChild>
+								<Link
+									href={SCHEDULE_URL}
+									target='_blank'
+									rel='noopener noreferrer'
+									className='flex items-center'
+								>
+									<CalendarDays className='mr-2 h-4 w-4' />
+									Schedule
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+								<User className='mr-2 h-4 w-4' />
+								Profile
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={onLogout}
+								disabled={logoutLoading}
+								className='text-destructive focus:text-destructive'
 							>
-								<CalendarDays className='mr-2 h-4 w-4' />
-								Schedule
-							</Link>
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
-							<User className='mr-2 h-4 w-4' />
-							Profile
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={onLogout}
-							disabled={logoutLoading}
-							className='text-destructive focus:text-destructive'
-						>
-							<LogOut className='mr-2 h-4 w-4' />
-							{logoutLoading ? 'Signing out…' : 'Sign out'}
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+								<LogOut className='mr-2 h-4 w-4' />
+								{logoutLoading ? 'Signing out…' : 'Sign out'}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 			</div>
 		</header>
 	)

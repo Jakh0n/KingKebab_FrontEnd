@@ -87,12 +87,28 @@
 	html {
 		-webkit-text-size-adjust: 100%;
 		text-rendering: optimizeLegibility;
+		color-scheme: light dark;
 	}
 
 	body {
 		@apply bg-background text-foreground antialiased;
 		font-feature-settings: 'ss01', 'cv11';
 		letter-spacing: -0.01em;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+
+	a:focus-visible {
+		@apply rounded-md outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
 	}
 
 	h1,
