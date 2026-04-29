@@ -52,6 +52,10 @@ import * as XLSX from "xlsx";
 import AddWorkerModal from "./components/AddWorkerModal";
 import AnnouncementModal from "./components/AnnouncementModal";
 
+/** Shared height for worker list + detail split so both columns align on large screens */
+const ADMIN_WORKER_SPLIT_HEIGHT =
+  "h-[calc(100vh-380px)] sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)]";
+
 export default function AdminPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -561,7 +565,7 @@ export default function AdminPage() {
                 Add Announcement
               </Button>
             </div>
-            <div className="custom-scrollbar max-h-[280px] space-y-3 overflow-y-auto pr-2">
+            <div className="custom-scrollbar apple-scrollbar max-h-[280px] space-y-3 overflow-y-auto px-1">
               {announcements.length === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">
                   No announcements yet. Add one to show on the dashboard.
@@ -637,12 +641,14 @@ export default function AdminPage() {
             </div>
           </Card>
 
-          {/* Main Content */}
-          <div className="flex flex-col lg:flex-row gap-4">
+          {/* Main Content — equal-height columns on lg */}
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-stretch">
             {/* Workers List */}
-            <div className="w-full rounded-2xl border border-border bg-card p-3 sm:p-4 lg:w-1/3">
+            <div
+              className={`flex w-full min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card p-3 sm:p-4 lg:w-1/3 ${ADMIN_WORKER_SPLIT_HEIGHT}`}
+            >
               {/* Search Input */}
-              <div className="relative mb-4">
+              <div className="relative mb-4 shrink-0">
                 <input
                   type="text"
                   placeholder="Search workers..."
@@ -656,17 +662,19 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="custom-scrollbar h-[calc(100vh-380px)] space-y-3 overflow-y-auto pr-2 sm:h-[calc(100vh-320px)] lg:h-[calc(100vh-230px)]">
-                {filteredWorkers.map((worker) => (
-                  <Card
-                    key={worker.id}
-                    className={`cursor-pointer border border-transparent p-3 transition-all hover:bg-muted/80 sm:p-4 ${
-                      selectedWorker === worker.id
-                        ? "bg-muted ring-2 ring-primary ring-offset-2 ring-offset-background"
-                        : "bg-background"
-                    }`}
-                    onClick={() => setSelectedWorker(worker.id)}
-                  >
+              <div className="custom-scrollbar apple-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 sm:px-0.5">
+                {filteredWorkers.map((worker) => {
+                  const isSelected = selectedWorker === worker.id;
+                  return (
+                    <Card
+                      key={worker.id}
+                      className={`max-w-full cursor-pointer border border-transparent p-3 transition-all hover:bg-muted/80 sm:p-4 ${
+                        isSelected
+                          ? "bg-muted ring-2 ring-primary ring-inset"
+                          : "bg-background"
+                      }`}
+                      onClick={() => setSelectedWorker(worker.id)}
+                    >
                     <div className="flex flex-col gap-3">
                       <div className="flex items-start justify-between">
                         <div>
@@ -704,7 +712,13 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                        <div className="rounded-lg bg-muted p-2 sm:p-3">
+                        <div
+                          className={
+                            isSelected
+                              ? "rounded-lg bg-background/85 p-2 ring-1 ring-border/60 sm:p-3 dark:bg-background/50"
+                              : "rounded-lg bg-muted p-2 sm:p-3"
+                          }
+                        >
                           <p className="mb-0.5 flex items-center gap-1 text-xs text-muted-foreground sm:mb-1">
                             <CalendarDays size={12} />
                             Regular
@@ -713,7 +727,13 @@ export default function AdminPage() {
                             {worker.regularDays}d
                           </p>
                         </div>
-                        <div className="rounded-lg bg-muted p-2 sm:p-3">
+                        <div
+                          className={
+                            isSelected
+                              ? "rounded-lg bg-background/85 p-2 ring-1 ring-border/60 sm:p-3 dark:bg-background/50"
+                              : "rounded-lg bg-muted p-2 sm:p-3"
+                          }
+                        >
                           <p className="mb-0.5 flex items-center gap-1 text-xs text-muted-foreground sm:mb-1">
                             <Timer size={12} />
                             Overtime
@@ -724,17 +744,20 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 
             {/* Worker Details */}
-            <div className="w-full lg:w-2/3">
-              <Card className="h-[calc(100vh-380px)] border-border bg-card p-3 text-card-foreground sm:h-[calc(100vh-320px)] sm:p-4 lg:h-[calc(100vh-230px)] lg:p-6">
+            <div
+              className={`flex w-full min-h-0 min-w-0 flex-col lg:w-2/3 ${ADMIN_WORKER_SPLIT_HEIGHT}`}
+            >
+              <Card className="flex h-full min-h-0 flex-col gap-4 border-border bg-card p-3 text-card-foreground sm:p-4 lg:p-6">
                 {selectedWorkerData ? (
-                  <div className="flex h-full flex-col">
-                    <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="mb-0 flex shrink-0 flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
                         {selectedWorkerData.position === "worker" ? (
                           <ChefHat size={20} className="text-teal-600 dark:text-teal-400" />
@@ -761,7 +784,7 @@ export default function AdminPage() {
 											<span className='sm:hidden'>PDF</span>
 										</Button> */}
                     </div>
-                    <div className="custom-scrollbar flex-1 space-y-2 overflow-y-auto pr-2 sm:space-y-3">
+                    <div className="custom-scrollbar apple-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto px-1 sm:space-y-3 sm:px-0.5">
                       {filteredEntries
                         .filter(
                           (entry) =>
@@ -883,7 +906,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="flex h-full items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+                  <p className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted-foreground">
                     <ChevronRight size={18} aria-hidden />
                     Select a worker to view details
                   </p>
