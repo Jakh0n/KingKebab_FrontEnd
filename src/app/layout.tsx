@@ -1,3 +1,4 @@
+import { PwaInstallModal } from '@/components/pwa/PwaInstallModal'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import Footer from '@/components/shared/footer'
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
 					<ServiceWorkerRegistration />
 					{children}
 					<Footer />
+					<PwaInstallModal />
 					<Toaster richColors position='top-center' closeButton />
 				</ThemeProvider>
 			</body>
