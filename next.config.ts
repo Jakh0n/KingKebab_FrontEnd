@@ -5,9 +5,11 @@ const nextConfig: NextConfig = {
     {
       source: "/:path*",
       headers: [
+        // Allow Telegram Mini App WebView; do not use X-Frame-Options DENY
         {
-          key: "X-Frame-Options",
-          value: "DENY",
+          key: "Content-Security-Policy",
+          value:
+            "frame-ancestors 'self' https://web.telegram.org https://telegram.org;",
         },
         {
           key: "X-Content-Type-Options",

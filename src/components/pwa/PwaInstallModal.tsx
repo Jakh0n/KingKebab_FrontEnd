@@ -9,6 +9,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog'
+import { useTelegram } from '@/components/providers/telegram-provider'
 import {
 	detectPlatform,
 	isInstallDismissed,
@@ -21,12 +22,14 @@ import { Download, Plus, Share, Smartphone, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 export function PwaInstallModal() {
+	const { isTelegram, isReady } = useTelegram()
 	const [open, setOpen] = useState(false)
 	const [platform, setPlatform] = useState<DevicePlatform>('desktop')
 	const [deferredPrompt, setDeferredPrompt] =
 		useState<BeforeInstallPromptEvent | null>(null)
 
 	useEffect(() => {
+		if (!isReady || isTelegram) return
 		if (isPwaInstalled() || isInstallDismissed()) return
 
 		setPlatform(detectPlatform())
@@ -49,7 +52,9 @@ export function PwaInstallModal() {
 			window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
 			window.removeEventListener('appinstalled', handleAppInstalled)
 		}
-	}, [])
+	}, [isReady, isTelegram])
+
+	if (isTelegram) return null
 
 	const handleInstall = async () => {
 		if (!deferredPrompt) return

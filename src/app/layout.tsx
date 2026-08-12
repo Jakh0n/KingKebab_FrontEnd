@@ -1,9 +1,11 @@
 import { PwaInstallModal } from '@/components/pwa/PwaInstallModal'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { ThemeProvider } from '@/components/providers/theme-provider'
+import { TelegramProvider } from '@/components/providers/telegram-provider'
 import Footer from '@/components/shared/footer'
 import { ThemeColorSync } from '@/components/theme/theme-color-sync'
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Toaster } from 'sonner'
 import 'leaflet/dist/leaflet.css'
 import './globals.css'
@@ -57,13 +59,24 @@ export default function RootLayout({ children }: RootLayoutProps) {
 	return (
 		<html lang='en' suppressHydrationWarning>
 			<body className='min-h-screen bg-background font-sans text-foreground'>
-				<ThemeProvider attribute='class' defaultTheme='light' enableSystem={false} disableTransitionOnChange>
-					<ThemeColorSync />
-					<ServiceWorkerRegistration />
-					{children}
-					<Footer />
-					<PwaInstallModal />
-					<Toaster richColors position='top-center' closeButton />
+				<Script
+					src='https://telegram.org/js/telegram-web-app.js'
+					strategy='beforeInteractive'
+				/>
+				<ThemeProvider
+					attribute='class'
+					defaultTheme='light'
+					enableSystem={false}
+					disableTransitionOnChange
+				>
+					<TelegramProvider>
+						<ThemeColorSync />
+						<ServiceWorkerRegistration />
+						{children}
+						<Footer />
+						<PwaInstallModal />
+						<Toaster richColors position='top-center' closeButton />
+					</TelegramProvider>
 				</ThemeProvider>
 			</body>
 		</html>

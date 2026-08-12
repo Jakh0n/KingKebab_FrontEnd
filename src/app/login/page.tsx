@@ -1,14 +1,21 @@
 "use client";
 
 import { AuthShell } from "@/components/auth/AuthShell";
+import { useTelegram } from "@/components/providers/telegram-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login, logout } from "@/lib/api";
+import {
+  linkTelegramAccount,
+  login,
+  loginWithTelegram,
+  logout,
+} from "@/lib/api";
+import { getTelegramInitData } from "@/lib/telegram";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const MIN_ATTEMPT_INTERVAL_MS = 2000;
@@ -22,12 +29,64 @@ function decodeToken(token: string): JwtPayload {
   return JSON.parse(atob(token.split(".")[1]));
 }
 
+function redirectAfterAuth(token: string, router: ReturnType<typeof useRouter>) {
+  const payload = decodeToken(token);
+  if (!payload.exp || Date.now() >= payload.exp * 1000) {
+    throw new Error("Token has expired");
+  }
+  router.push(payload.isAdmin ? "/admin" : "/dashboard");
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const { isTelegram, isReady } = useTelegram();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isTelegramChecking, setIsTelegramChecking] = useState(false);
+  const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
+
+  useEffect(() => {
+    if (!isReady || !isTelegram) return;
+
+    const initData = getTelegramInitData();
+    if (!initData) return;
+
+    let cancelled = false;
+
+    async function tryTelegramLogin() {
+      setIsTelegramChecking(true);
+      setError("");
+      try {
+        const response = await loginWithTelegram(initData!);
+        if (cancelled) return;
+        toast.success("Welcome back", {
+          description: `Signed in as ${response.username}`,
+        });
+        redirectAfterAuth(response.token, router);
+      } catch (err) {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "Login failed";
+        if (
+          message.toLowerCase().includes("not linked") ||
+          message.toLowerCase().includes("telegram account is not linked")
+        ) {
+          setNeedsTelegramLink(true);
+        } else {
+          setError(message);
+        }
+      } finally {
+        if (!cancelled) setIsTelegramChecking(false);
+      }
+    }
+
+    void tryTelegramLogin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, isTelegram, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,24 +108,24 @@ export default function LoginPage() {
       }
       localStorage.setItem("lastLoginAttempt", Date.now().toString());
 
-      const response = await login(username, password);
+      const initData = getTelegramInitData();
+      const response =
+        isTelegram && initData
+          ? await linkTelegramAccount(initData, username, password)
+          : await login(username, password);
+
       if (!response?.token) {
         throw new Error("Invalid response from server");
       }
 
-      const payload = decodeToken(response.token);
-      if (!payload.exp || Date.now() >= payload.exp * 1000) {
-        throw new Error("Token has expired");
-      }
-
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("position", response.position);
-
       toast.success("Welcome back", {
-        description: `Signed in as ${username}`,
+        description:
+          isTelegram && initData
+            ? `Telegram linked · signed in as ${username}`
+            : `Signed in as ${username}`,
       });
 
-      router.push(payload.isAdmin ? "/admin" : "/dashboard");
+      redirectAfterAuth(response.token, router);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
       setError(message);
@@ -76,10 +135,30 @@ export default function LoginPage() {
     }
   }
 
+  if (isTelegramChecking) {
+    return (
+      <AuthShell
+        title="Opening King Kebab"
+        subtitle="Signing you in with Telegram…"
+      >
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Connecting…
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to continue to King Kebab."
+      title={needsTelegramLink ? "Link your account" : "Welcome back"}
+      subtitle={
+        needsTelegramLink
+          ? "Sign in once to connect this Telegram account. Next time you’ll open straight into the app."
+          : isTelegram
+            ? "Sign in to continue inside Telegram."
+            : "Sign in to continue to King Kebab."
+      }
       footer={
         <>
           Don&apos;t have an account?{" "}
@@ -143,8 +222,10 @@ export default function LoginPage() {
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Signing in…
+              {needsTelegramLink ? "Linking…" : "Signing in…"}
             </>
+          ) : needsTelegramLink ? (
+            "Link & sign in"
           ) : (
             "Sign in"
           )}

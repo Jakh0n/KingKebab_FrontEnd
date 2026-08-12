@@ -86,6 +86,52 @@ export async function login(
   return data;
 }
 
+function persistAuthSession(data: AuthResponse): AuthResponse {
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("position", data.position);
+  if (data.employeeId) {
+    localStorage.setItem("employeeId", data.employeeId);
+  }
+  Cookies.set("token", data.token, { expires: 1 });
+  return data;
+}
+
+export async function loginWithTelegram(
+  initData: string,
+): Promise<AuthResponse> {
+  logout();
+
+  const response = await fetch(`${API_URL}/auth/telegram`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ initData }),
+  });
+
+  const data = await handleResponse<AuthResponse>(response);
+  return persistAuthSession(data);
+}
+
+export async function linkTelegramAccount(
+  initData: string,
+  username: string,
+  password: string,
+): Promise<AuthResponse> {
+  logout();
+
+  const response = await fetch(`${API_URL}/auth/telegram/link`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ initData, username, password }),
+  });
+
+  const data = await handleResponse<AuthResponse>(response);
+  return persistAuthSession(data);
+}
+
 export async function register(
   username: string,
   password: string,
