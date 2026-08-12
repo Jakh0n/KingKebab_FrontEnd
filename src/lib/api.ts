@@ -16,6 +16,8 @@ import {
 import { getAuthHeaders } from "@/lib/auth";
 import {
   clearTelegramSession,
+  clearTelegramSignedOut,
+  markTelegramSignedOut,
   saveTelegramSession,
 } from "@/lib/telegram";
 import Cookies from "js-cookie";
@@ -86,6 +88,7 @@ export async function login(
 }
 
 function persistAuthSession(data: AuthResponse): AuthResponse {
+  clearTelegramSignedOut();
   localStorage.setItem("token", data.token);
   localStorage.setItem("position", data.position);
   if (data.employeeId) {
@@ -364,9 +367,15 @@ export function logout(options?: { preserveTelegramCloud?: boolean }) {
   localStorage.clear(); // Barcha localStorage ma'lumotlarini tozalash
   Cookies.remove("token");
   sessionStorage.clear(); // SessionStorage'ni ham tozalash
-  if (!options?.preserveTelegramCloud) {
-    clearTelegramSession();
+
+  if (options?.preserveTelegramCloud) {
+    // Re-auth helpers: keep cloud token, but don't mark signed-out
+    return;
   }
+
+  // Explicit user sign-out: clear cloud session and block auto-login
+  clearTelegramSession();
+  markTelegramSignedOut();
 }
 
 export async function registerWorker(data: {

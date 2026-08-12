@@ -106,6 +106,8 @@ declare global {
 
 const AUTH_TOKEN_KEY = 'auth_token'
 const AUTH_POSITION_KEY = 'auth_position'
+const SIGNED_OUT_KEY = 'signed_out'
+const LOCAL_SIGNED_OUT_KEY = 'kk_telegram_signed_out'
 
 export function getTelegramWebApp(): TelegramWebApp | null {
 	if (typeof window === 'undefined') return null
@@ -147,8 +149,64 @@ export function waitForTelegramInitData(
 	})
 }
 
+export function markTelegramSignedOut(): void {
+	try {
+		localStorage.setItem(LOCAL_SIGNED_OUT_KEY, '1')
+	} catch {
+		// ignore
+	}
+
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return
+	try {
+		storage.setItem(SIGNED_OUT_KEY, '1')
+	} catch {
+		// ignore
+	}
+}
+
+export function clearTelegramSignedOut(): void {
+	try {
+		localStorage.removeItem(LOCAL_SIGNED_OUT_KEY)
+	} catch {
+		// ignore
+	}
+
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return
+	try {
+		storage.removeItem(SIGNED_OUT_KEY)
+	} catch {
+		// ignore
+	}
+}
+
+export function isTelegramSignedOut(): Promise<boolean> {
+	try {
+		if (localStorage.getItem(LOCAL_SIGNED_OUT_KEY) === '1') {
+			return Promise.resolve(true)
+		}
+	} catch {
+		// ignore
+	}
+
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return Promise.resolve(false)
+
+	return new Promise(resolve => {
+		try {
+			storage.getItem(SIGNED_OUT_KEY, (error, value) => {
+				resolve(!error && value === '1')
+			})
+		} catch {
+			resolve(false)
+		}
+	})
+}
+
 export function saveTelegramSession(token: string, position?: string): void {
 	const storage = getTelegramWebApp()?.CloudStorage
+	clearTelegramSignedOut()
 	if (!storage) return
 
 	try {

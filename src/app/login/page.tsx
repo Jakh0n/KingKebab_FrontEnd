@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import {
   getTelegramInitData,
+  isTelegramSignedOut,
   loadTelegramSession,
   saveTelegramSession,
 } from "@/lib/telegram";
@@ -88,6 +89,13 @@ export default function LoginPage() {
       setError("");
 
       try {
+        // User explicitly signed out — stay on login until they sign in again
+        if (await isTelegramSignedOut()) {
+          const initData = contextInitData || getTelegramInitData();
+          if (initData) setNeedsTelegramLink(true);
+          return;
+        }
+
         const initData = contextInitData || getTelegramInitData();
 
         // 1) Preferred: Telegram initData → backend issues fresh JWT
