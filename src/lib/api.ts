@@ -132,6 +132,22 @@ export async function linkTelegramAccount(
   return persistAuthSession(data);
 }
 
+export async function attachTelegramAccount(
+  initData: string,
+): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/auth/telegram/attach`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ initData }),
+  });
+
+  const data = await handleResponse<AuthResponse>(response);
+  return persistAuthSession(data);
+}
+
 export async function register(
   username: string,
   password: string,

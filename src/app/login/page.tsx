@@ -37,6 +37,15 @@ function redirectAfterAuth(token: string, router: ReturnType<typeof useRouter>) 
   router.push(payload.isAdmin ? "/admin" : "/dashboard");
 }
 
+function isTelegramConfigError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("invalid or expired telegram data") ||
+    lower.includes("mini app bot is not configured") ||
+    lower.includes("telegram mini app bot")
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { isTelegram, isReady } = useTelegram();
@@ -46,6 +55,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTelegramChecking, setIsTelegramChecking] = useState(false);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
+  const [telegramReady, setTelegramReady] = useState(false);
 
   useEffect(() => {
     if (!isReady || !isTelegram) return;
@@ -73,7 +83,15 @@ export default function LoginPage() {
           message.toLowerCase().includes("telegram account is not linked")
         ) {
           setNeedsTelegramLink(true);
+          setTelegramReady(true);
+        } else if (isTelegramConfigError(message)) {
+          // Server Mini App token missing/wrong — still allow normal login
+          setNeedsTelegramLink(false);
+          setTelegramReady(false);
+          console.warn("Telegram Mini App auth unavailable:", message);
         } else {
+          setNeedsTelegramLink(false);
+          setTelegramReady(false);
           setError(message);
         }
       } finally {
@@ -109,20 +127,34 @@ export default function LoginPage() {
       localStorage.setItem("lastLoginAttempt", Date.now().toString());
 
       const initData = getTelegramInitData();
-      const response =
-        isTelegram && initData
-          ? await linkTelegramAccount(initData, username, password)
-          : await login(username, password);
+      let response;
+      let linked = false;
+
+      if (telegramReady && initData) {
+        try {
+          response = await linkTelegramAccount(initData, username, password);
+          linked = true;
+        } catch (linkErr) {
+          const linkMessage =
+            linkErr instanceof Error ? linkErr.message : "Link failed";
+          if (isTelegramConfigError(linkMessage)) {
+            response = await login(username, password);
+          } else {
+            throw linkErr;
+          }
+        }
+      } else {
+        response = await login(username, password);
+      }
 
       if (!response?.token) {
         throw new Error("Invalid response from server");
       }
 
       toast.success("Welcome back", {
-        description:
-          isTelegram && initData
-            ? `Telegram linked · signed in as ${username}`
-            : `Signed in as ${username}`,
+        description: linked
+          ? `Telegram linked · signed in as ${username}`
+          : `Signed in as ${username}`,
       });
 
       redirectAfterAuth(response.token, router);

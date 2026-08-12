@@ -1,11 +1,13 @@
 'use client'
 
 import { AuthShell } from '@/components/auth/AuthShell'
+import { useTelegram } from '@/components/providers/telegram-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { attachTelegramAccount, register } from '@/lib/api'
+import { getTelegramInitData } from '@/lib/telegram'
 import { cn } from '@/lib/utils'
-import { register } from '@/lib/api'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -22,6 +24,7 @@ const POSITIONS: { value: Position; label: string }[] = [
 
 export default function RegisterPage() {
 	const router = useRouter()
+	const { isTelegram } = useTelegram()
 	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')
 	const [employeeId, setEmployeeId] = useState('')
@@ -40,9 +43,24 @@ export default function RegisterPage() {
 			localStorage.setItem('position', response.position)
 			localStorage.setItem('employeeId', response.employeeId)
 
-			toast.success('Account created', {
-				description: `Welcome, ${username}`,
-			})
+			const initData = getTelegramInitData()
+			if (isTelegram && initData) {
+				try {
+					await attachTelegramAccount(initData)
+					toast.success('Account created', {
+						description: `Welcome, ${username} · Telegram linked`,
+					})
+				} catch {
+					toast.success('Account created', {
+						description: `Welcome, ${username}`,
+					})
+				}
+			} else {
+				toast.success('Account created', {
+					description: `Welcome, ${username}`,
+				})
+			}
+
 			router.push('/dashboard')
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Registration failed'
@@ -56,7 +74,11 @@ export default function RegisterPage() {
 	return (
 		<AuthShell
 			title='Create account'
-			subtitle='Join the King Kebab team portal.'
+			subtitle={
+				isTelegram
+					? 'Create your account — it will be linked to this Telegram.'
+					: 'Join the King Kebab team portal.'
+			}
 			footer={
 				<>
 					Already have an account?{' '}
