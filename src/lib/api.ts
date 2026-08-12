@@ -14,6 +14,10 @@ import {
   WeeklyScheduleData,
 } from "@/types";
 import { getAuthHeaders } from "@/lib/auth";
+import {
+  clearTelegramSession,
+  saveTelegramSession,
+} from "@/lib/telegram";
 import Cookies from "js-cookie";
 
 // Determine API URL based on environment
@@ -66,8 +70,8 @@ export async function login(
   username: string,
   password: string,
 ): Promise<AuthResponse> {
-  // Avval barcha storage'larni tozalash
-  logout();
+  // Avval barcha storage'larni tozalash (CloudStorage saqlanadi — Telegram cold start uchun)
+  logout({ preserveTelegramCloud: true });
 
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -78,12 +82,7 @@ export async function login(
   });
   const data = await handleResponse<AuthResponse>(response);
 
-  // Token va position ni localStorage va cookie ga saqlash
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("position", data.position);
-  Cookies.set("token", data.token, { expires: 1 }); // 1 kunlik cookie
-
-  return data;
+  return persistAuthSession(data);
 }
 
 function persistAuthSession(data: AuthResponse): AuthResponse {
@@ -92,14 +91,15 @@ function persistAuthSession(data: AuthResponse): AuthResponse {
   if (data.employeeId) {
     localStorage.setItem("employeeId", data.employeeId);
   }
-  Cookies.set("token", data.token, { expires: 1 });
+  Cookies.set("token", data.token, { expires: 7, sameSite: "lax" });
+  saveTelegramSession(data.token, data.position);
   return data;
 }
 
 export async function loginWithTelegram(
   initData: string,
 ): Promise<AuthResponse> {
-  logout();
+  logout({ preserveTelegramCloud: true });
 
   const response = await fetch(`${API_URL}/auth/telegram`, {
     method: "POST",
@@ -118,7 +118,7 @@ export async function linkTelegramAccount(
   username: string,
   password: string,
 ): Promise<AuthResponse> {
-  logout();
+  logout({ preserveTelegramCloud: true });
 
   const response = await fetch(`${API_URL}/auth/telegram/link`, {
     method: "POST",
@@ -155,7 +155,7 @@ export async function register(
   employeeId: string,
 ): Promise<AuthResponse> {
   // Avval barcha storage'larni tozalash
-  logout();
+  logout({ preserveTelegramCloud: true });
 
   const response = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
@@ -171,13 +171,10 @@ export async function register(
   });
   const data = await handleResponse<AuthResponse>(response);
 
-  // Token va position ni localStorage va cookie ga saqlash
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("position", data.position);
-  localStorage.setItem("employeeId", data.employeeId);
-  Cookies.set("token", data.token, { expires: 1 }); // 1 kunlik cookie
-
-  return data;
+  return persistAuthSession({
+    ...data,
+    employeeId: data.employeeId,
+  });
 }
 
 export async function requestPasswordReset(
@@ -363,10 +360,13 @@ export async function updateTimeEntry(
 }
 
 // Logout funksiyasini qo'shamiz
-export function logout() {
+export function logout(options?: { preserveTelegramCloud?: boolean }) {
   localStorage.clear(); // Barcha localStorage ma'lumotlarini tozalash
   Cookies.remove("token");
   sessionStorage.clear(); // SessionStorage'ni ham tozalash
+  if (!options?.preserveTelegramCloud) {
+    clearTelegramSession();
+  }
 }
 
 export async function registerWorker(data: {

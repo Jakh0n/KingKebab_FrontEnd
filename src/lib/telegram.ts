@@ -23,6 +23,22 @@ export interface TelegramThemeParams {
 	destructive_text_color?: string
 }
 
+export interface TelegramCloudStorage {
+	setItem: (
+		key: string,
+		value: string,
+		callback?: (error: string | null, stored?: boolean) => void,
+	) => void
+	getItem: (
+		key: string,
+		callback: (error: string | null, value?: string) => void,
+	) => void
+	removeItem: (
+		key: string,
+		callback?: (error: string | null, removed?: boolean) => void,
+	) => void
+}
+
 export interface TelegramWebApp {
 	initData: string
 	initDataUnsafe: {
@@ -48,6 +64,7 @@ export interface TelegramWebApp {
 	setBackgroundColor: (color: string) => void
 	enableClosingConfirmation?: () => void
 	disableVerticalSwipes?: () => void
+	CloudStorage?: TelegramCloudStorage
 	HapticFeedback?: {
 		impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
 		notificationOccurred: (type: 'error' | 'success' | 'warning') => void
@@ -87,6 +104,9 @@ declare global {
 	}
 }
 
+const AUTH_TOKEN_KEY = 'auth_token'
+const AUTH_POSITION_KEY = 'auth_position'
+
 export function getTelegramWebApp(): TelegramWebApp | null {
 	if (typeof window === 'undefined') return null
 	return window.Telegram?.WebApp ?? null
@@ -100,4 +120,79 @@ export function isTelegramMiniApp(): boolean {
 export function getTelegramInitData(): string | null {
 	const initData = getTelegramWebApp()?.initData
 	return initData ? initData : null
+}
+
+/** Wait until Telegram injects initData (cold start can be delayed). */
+export function waitForTelegramInitData(
+	timeoutMs = 3000,
+	intervalMs = 100,
+): Promise<string | null> {
+	return new Promise(resolve => {
+		const started = Date.now()
+
+		const tick = () => {
+			const initData = getTelegramInitData()
+			if (initData) {
+				resolve(initData)
+				return
+			}
+			if (Date.now() - started >= timeoutMs) {
+				resolve(getTelegramInitData())
+				return
+			}
+			window.setTimeout(tick, intervalMs)
+		}
+
+		tick()
+	})
+}
+
+export function saveTelegramSession(token: string, position?: string): void {
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return
+
+	try {
+		storage.setItem(AUTH_TOKEN_KEY, token)
+		if (position) {
+			storage.setItem(AUTH_POSITION_KEY, position)
+		}
+	} catch {
+		// CloudStorage may be unavailable on older clients
+	}
+}
+
+export function clearTelegramSession(): void {
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return
+
+	try {
+		storage.removeItem(AUTH_TOKEN_KEY)
+		storage.removeItem(AUTH_POSITION_KEY)
+	} catch {
+		// ignore
+	}
+}
+
+export function loadTelegramSession(): Promise<{
+	token: string
+	position?: string
+} | null> {
+	const storage = getTelegramWebApp()?.CloudStorage
+	if (!storage) return Promise.resolve(null)
+
+	return new Promise(resolve => {
+		try {
+			storage.getItem(AUTH_TOKEN_KEY, (error, token) => {
+				if (error || !token) {
+					resolve(null)
+					return
+				}
+				storage.getItem(AUTH_POSITION_KEY, (_posErr, position) => {
+					resolve({ token, position: position || undefined })
+				})
+			})
+		} catch {
+			resolve(null)
+		}
+	})
 }
