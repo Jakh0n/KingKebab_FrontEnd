@@ -26,9 +26,10 @@ import {
 	getAnnouncements,
 	getUserProfile,
 	logout,
+	ensureAuthenticated,
 	updateUserProfile,
 } from '@/lib/api'
-import { getTokenOrNull } from '@/lib/auth'
+import { decodeToken, getTokenOrNull } from '@/lib/auth'
 import { notifyTimeEntry } from '@/lib/telegramNotifications'
 import { Announcement, TimeEntry, TimeEntryFormData } from '@/types'
 import {
@@ -181,32 +182,44 @@ export default function DashboardPage() {
 	}, [formData.startTime, formData.endTime, calculateHours])
 
 	useEffect(() => {
-		const token = getTokenOrNull()
-		if (!token) {
-			router.push('/login')
-			return
+		let cancelled = false
+
+		async function boot() {
+			const ok = await ensureAuthenticated()
+			if (cancelled) return
+
+			const token = getTokenOrNull()
+			if (!ok || !token) {
+				router.push('/login')
+				return
+			}
+
+			const payload = decodeToken(token)
+			setUserData({
+				id: payload.userId || '',
+				username: payload.username || '',
+				position: payload.position || '',
+				employeeId: payload.employeeId || '',
+			})
+
+			loadEntries()
+			getAnnouncements()
+				.then(setAnnouncements)
+				.catch(() => setAnnouncements([]))
+
+			getUserProfile()
+				.then(user => {
+					const completed = user.surveyCompleted ?? false
+					setSurveyCompleted(completed)
+					setShowSurveyModal(!completed)
+				})
+				.catch(() => setSurveyCompleted(false))
 		}
 
-		const payload = JSON.parse(atob(token.split('.')[1]))
-		setUserData({
-			id: payload.userId,
-			username: payload.username,
-			position: payload.position,
-			employeeId: payload.employeeId,
-		})
-
-		loadEntries()
-		getAnnouncements()
-			.then(setAnnouncements)
-			.catch(() => setAnnouncements([]))
-
-		getUserProfile()
-			.then(user => {
-				const completed = user.surveyCompleted ?? false
-				setSurveyCompleted(completed)
-				setShowSurveyModal(!completed)
-			})
-			.catch(() => setSurveyCompleted(false))
+		void boot()
+		return () => {
+			cancelled = true
+		}
 	}, [router, loadEntries])
 
 	useEffect(() => {

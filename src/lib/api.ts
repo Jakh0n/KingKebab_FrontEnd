@@ -13,14 +13,21 @@ import {
   User,
   WeeklyScheduleData,
 } from "@/types";
-import { getAuthHeaders } from "@/lib/auth";
+import {
+  clearAuthStorage,
+  getAuthHeaders,
+  getRefreshToken,
+  getTokenOrNull,
+  isAccessTokenValid,
+  persistAuthStorage,
+} from "@/lib/auth";
 import {
   clearTelegramSession,
   clearTelegramSignedOut,
+  loadTelegramSession,
   markTelegramSignedOut,
   saveTelegramSession,
 } from "@/lib/telegram";
-import Cookies from "js-cookie";
 
 // Determine API URL based on environment
 const getApiUrl = () => {
@@ -42,6 +49,9 @@ const getApiUrl = () => {
 };
 
 const API_URL = getApiUrl();
+const ACCESS_REFRESH_SKEW_MS = 60 * 1000;
+
+let refreshPromise: Promise<boolean> | null = null;
 
 async function handleResponse<T>(response: Response): Promise<T> {
   // Check if response has content
@@ -68,6 +78,147 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
+function persistAuthSession(data: AuthResponse): AuthResponse {
+  clearTelegramSignedOut();
+  persistAuthStorage(data);
+  saveTelegramSession(data.token, data.position, data.refreshToken);
+  return data;
+}
+
+async function requestTokenRefresh(): Promise<AuthResponse> {
+  const refreshToken = getRefreshToken();
+  const accessToken = getTokenOrNull();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(`${API_URL}/auth/refresh`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+  });
+
+  return handleResponse<AuthResponse>(response);
+}
+
+export async function refreshSession(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      if (!getTokenOrNull() && !getRefreshToken()) {
+        return false;
+      }
+      const data = await requestTokenRefresh();
+      if (!data?.token) return false;
+      persistAuthSession(data);
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+export async function ensureAuthenticated(): Promise<boolean> {
+  const token = getTokenOrNull();
+  if (isAccessTokenValid(token, ACCESS_REFRESH_SKEW_MS)) {
+    if (!getRefreshToken()) {
+      void refreshSession();
+    }
+    return true;
+  }
+
+  if (token || getRefreshToken()) {
+    return refreshSession();
+  }
+
+  const cloudSession = await loadTelegramSession();
+  if (!cloudSession) return false;
+
+  if (cloudSession.token && isAccessTokenValid(cloudSession.token, ACCESS_REFRESH_SKEW_MS)) {
+    persistAuthStorage({
+      token: cloudSession.token,
+      refreshToken: cloudSession.refreshToken,
+      position: cloudSession.position,
+    });
+    saveTelegramSession(
+      cloudSession.token,
+      cloudSession.position,
+      cloudSession.refreshToken,
+    );
+    return true;
+  }
+
+  if (cloudSession.token || cloudSession.refreshToken) {
+    persistAuthStorage({
+      refreshToken: cloudSession.refreshToken,
+      position: cloudSession.position,
+    });
+    return refreshSession();
+  }
+
+  return false;
+}
+
+function redirectToLogin(): void {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/login") return;
+  window.location.assign("/login");
+}
+
+async function authFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const ok = await ensureAuthenticated();
+  if (!ok) {
+    logout({ preserveTelegramCloud: true });
+    redirectToLogin();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  const headers = new Headers(init.headers);
+  const authHeaders = getAuthHeaders();
+  Object.entries(authHeaders).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
+
+  const doFetch = () =>
+    globalThis.fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+    });
+
+  let response = await doFetch();
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const refreshed = await refreshSession();
+  if (!refreshed) {
+    logout({ preserveTelegramCloud: true });
+    redirectToLogin();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  const retryHeaders = new Headers(init.headers);
+  Object.entries(getAuthHeaders()).forEach(([key, value]) => {
+    retryHeaders.set(key, value);
+  });
+
+  return globalThis.fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: retryHeaders,
+  });
+}
+
 export async function login(
   username: string,
   password: string,
@@ -85,18 +236,6 @@ export async function login(
   const data = await handleResponse<AuthResponse>(response);
 
   return persistAuthSession(data);
-}
-
-function persistAuthSession(data: AuthResponse): AuthResponse {
-  clearTelegramSignedOut();
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("position", data.position);
-  if (data.employeeId) {
-    localStorage.setItem("employeeId", data.employeeId);
-  }
-  Cookies.set("token", data.token, { expires: 7, sameSite: "lax" });
-  saveTelegramSession(data.token, data.position);
-  return data;
 }
 
 export async function loginWithTelegram(
@@ -138,11 +277,10 @@ export async function linkTelegramAccount(
 export async function attachTelegramAccount(
   initData: string,
 ): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/telegram/attach`, {
+  const response = await authFetch("/auth/telegram/attach", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify({ initData }),
   });
@@ -225,11 +363,10 @@ export async function addTimeEntry(
 
   console.log("Sending data:", formattedData);
 
-  const response = await fetch(`${API_URL}/time`, {
+  const response = await authFetch(`/time`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(formattedData),
   });
@@ -238,16 +375,12 @@ export async function addTimeEntry(
 }
 
 export async function getMyTimeEntries(): Promise<TimeEntry[]> {
-  const response = await fetch(`${API_URL}/time/my-entries`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authFetch(`/time/my-entries`);
   return handleResponse<TimeEntry[]>(response);
 }
 
 export async function getAllTimeEntries(): Promise<TimeEntry[]> {
-  const response = await fetch(`${API_URL}/time/all`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authFetch(`/time/all`);
   return handleResponse<TimeEntry[]>(response);
 }
 
@@ -256,11 +389,8 @@ export async function downloadWorkerPDF(
   month: number,
   year: number,
 ) {
-  const response = await fetch(
-    `${API_URL}/time/worker-pdf/${userId}/${month}/${year}`,
-    {
-      headers: getAuthHeaders(),
-    },
+  const response = await authFetch(
+    `/time/worker-pdf/${userId}/${month}/${year}`,
   );
 
   if (!response.ok) {
@@ -291,9 +421,7 @@ export async function downloadWorkerPDF(
 }
 
 export async function downloadMyPDF(month: number, year: number) {
-  const response = await fetch(`${API_URL}/time/my-pdf/${month}/${year}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authFetch(`/time/my-pdf/${month}/${year}`);
 
   if (!response.ok) {
     throw new Error("Failed to download PDF");
@@ -323,9 +451,8 @@ export async function downloadMyPDF(month: number, year: number) {
 }
 
 export async function deleteTimeEntry(entryId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/time/${entryId}`, {
+  const response = await authFetch(`/time/${entryId}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -350,11 +477,10 @@ export async function updateTimeEntry(
     date: data.date,
   };
 
-  const response = await fetch(`${API_URL}/time/${id}`, {
+  const response = await authFetch(`/time/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(formattedData),
   });
@@ -364,16 +490,34 @@ export async function updateTimeEntry(
 
 // Logout funksiyasini qo'shamiz
 export function logout(options?: { preserveTelegramCloud?: boolean }) {
-  localStorage.clear(); // Barcha localStorage ma'lumotlarini tozalash
-  Cookies.remove("token");
-  sessionStorage.clear(); // SessionStorage'ni ham tozalash
+  const revokeOnServer = !options?.preserveTelegramCloud;
+  const refreshToken = revokeOnServer ? getRefreshToken() : null;
+  const accessToken = revokeOnServer ? getTokenOrNull() : null;
+
+  if (revokeOnServer && (refreshToken || accessToken)) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+    void fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+    }).catch(() => {
+      // local sign-out still proceeds
+    });
+  }
+
+  localStorage.clear();
+  sessionStorage.clear();
+  clearAuthStorage();
 
   if (options?.preserveTelegramCloud) {
-    // Re-auth helpers: keep cloud token, but don't mark signed-out
     return;
   }
 
-  // Explicit user sign-out: clear cloud session and block auto-login
   clearTelegramSession();
   markTelegramSignedOut();
 }
@@ -385,11 +529,10 @@ export async function registerWorker(data: {
   isAdmin: boolean;
   employeeId: string;
 }) {
-  const response = await fetch(`${API_URL}/auth/register`, {
+  const response = await authFetch(`/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -399,9 +542,7 @@ export async function registerWorker(data: {
 
 // Announcements
 export async function getAnnouncements(): Promise<Announcement[]> {
-  const response = await fetch(`${API_URL}/announcements`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authFetch(`/announcements`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch announcements");
@@ -415,11 +556,10 @@ export async function createAnnouncement(data: {
   content: string;
   type: "info" | "warning" | "success";
 }): Promise<Announcement> {
-  const response = await fetch(`${API_URL}/announcements`, {
+  const response = await authFetch(`/announcements`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -440,11 +580,10 @@ export async function updateAnnouncement(
     isActive: boolean;
   },
 ): Promise<Announcement> {
-  const response = await fetch(`${API_URL}/announcements/${id}`, {
+  const response = await authFetch(`/announcements/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -457,9 +596,8 @@ export async function updateAnnouncement(
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
-  const response = await fetch(`${API_URL}/announcements/${id}`, {
+  const response = await authFetch(`/announcements/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -470,9 +608,7 @@ export async function deleteAnnouncement(id: string): Promise<void> {
 
 // Profile API functions
 export async function getUserProfile(): Promise<User> {
-  const response = await fetch(`${API_URL}/profile`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authFetch(`/profile`);
 
   const user = await handleResponse<User>(response);
 
@@ -507,11 +643,10 @@ export async function updateUserProfile(data: {
   surveyCompleted?: boolean;
   surveyResponses?: SurveyResponses;
 }): Promise<User> {
-  const response = await fetch(`${API_URL}/profile`, {
+  const response = await authFetch(`/profile`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -526,9 +661,8 @@ export async function uploadProfileImage(file: File): Promise<{
   const formData = new FormData();
   formData.append("image", file);
 
-  const response = await fetch(`${API_URL}/profile/upload-image`, {
+  const response = await authFetch(`/profile/upload-image`, {
     method: "POST",
-    headers: getAuthHeaders(),
     body: formData,
   });
 
@@ -558,17 +692,15 @@ export async function getAllBranches(
   const params = new URLSearchParams();
   if (includeInactive) params.append("includeInactive", "true");
 
-  const response = await fetch(`${API_URL}/branches?${params}`, {
+  const response = await authFetch(`/branches?${params}`, {
     method: "GET",
-    headers: getAuthHeaders(),
   });
   return handleResponse<Branch[]>(response);
 }
 
 export async function getBranch(id: string): Promise<Branch> {
-  const response = await fetch(`${API_URL}/branches/${id}`, {
+  const response = await authFetch(`/branches/${id}`, {
     method: "GET",
-    headers: getAuthHeaders(),
   });
   return handleResponse<Branch>(response);
 }
@@ -585,11 +717,10 @@ export async function createBranch(
     throw new Error("Name, code, address, and city are required");
   }
 
-  const response = await fetch(`${API_URL}/branches`, {
+  const response = await authFetch(`/branches`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -600,11 +731,10 @@ export async function updateBranch(
   id: string,
   data: BranchFormData,
 ): Promise<{ message: string; branch: Branch }> {
-  const response = await fetch(`${API_URL}/branches/${id}`, {
+  const response = await authFetch(`/branches/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -612,9 +742,8 @@ export async function updateBranch(
 }
 
 export async function deleteBranch(id: string): Promise<{ message: string }> {
-  const response = await fetch(`${API_URL}/branches/${id}`, {
+  const response = await authFetch(`/branches/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
   return handleResponse<{ message: string }>(response);
 }
@@ -627,9 +756,8 @@ export async function getActiveBranches(): Promise<Branch[]> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  const response = await fetch(`${API_URL}/users`, {
+  const response = await authFetch(`/users`, {
     method: "GET",
-    headers: getAuthHeaders(),
   });
   return handleResponse<User[]>(response);
 }
@@ -663,9 +791,8 @@ export async function getSchedules(params: {
     }
   });
 
-  const response = await fetch(`${API_URL}/schedules?${searchParams}`, {
+  const response = await authFetch(`/schedules?${searchParams}`, {
     method: "GET",
-    headers: getAuthHeaders(),
   });
   return handleResponse<{
     schedules: Schedule[];
@@ -679,9 +806,8 @@ export async function getSchedules(params: {
 }
 
 export async function getSchedule(id: string): Promise<Schedule> {
-  const response = await fetch(`${API_URL}/schedules/${id}`, {
+  const response = await authFetch(`/schedules/${id}`, {
     method: "GET",
-    headers: getAuthHeaders(),
   });
   return handleResponse<Schedule>(response);
 }
@@ -705,11 +831,10 @@ export async function createSchedule(
     );
   }
 
-  const response = await fetch(`${API_URL}/schedules`, {
+  const response = await authFetch(`/schedules`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -724,11 +849,10 @@ export async function updateSchedule(
   id: string,
   data: Partial<ScheduleFormData>,
 ): Promise<{ message: string; schedule: Schedule }> {
-  const response = await fetch(`${API_URL}/schedules/${id}`, {
+  const response = await authFetch(`/schedules/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -736,9 +860,8 @@ export async function updateSchedule(
 }
 
 export async function deleteSchedule(id: string): Promise<{ message: string }> {
-  const response = await fetch(`${API_URL}/schedules/${id}`, {
+  const response = await authFetch(`/schedules/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders(),
   });
   return handleResponse<{ message: string }>(response);
 }
@@ -746,9 +869,8 @@ export async function deleteSchedule(id: string): Promise<{ message: string }> {
 export async function confirmSchedule(
   id: string,
 ): Promise<{ message: string; schedule: Schedule }> {
-  const response = await fetch(`${API_URL}/schedules/${id}/confirm`, {
+  const response = await authFetch(`/schedules/${id}/confirm`, {
     method: "PATCH",
-    headers: getAuthHeaders(),
   });
   return handleResponse<{ message: string; schedule: Schedule }>(response);
 }
@@ -770,12 +892,9 @@ export async function checkScheduleConflicts(params: {
     }
   });
 
-  const response = await fetch(
-    `${API_URL}/schedules/conflicts/check?${searchParams}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-    },
+  const response = await authFetch(
+    `/schedules/conflicts/check?${searchParams}`,
+    { method: "GET" },
   );
   return handleResponse<{
     hasConflicts: boolean;
@@ -793,12 +912,9 @@ export async function getWeeklySchedule(
   if (branchId) params.append("branchId", branchId);
   if (shiftType) params.append("shiftType", shiftType);
 
-  const response = await fetch(
-    `${API_URL}/schedules/weekly/${year}/${week}?${params}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-    },
+  const response = await authFetch(
+    `/schedules/weekly/${year}/${week}?${params}`,
+    { method: "GET" },
   );
   return handleResponse<WeeklyScheduleData>(response);
 }

@@ -105,6 +105,7 @@ declare global {
 }
 
 const AUTH_TOKEN_KEY = 'auth_token'
+const AUTH_REFRESH_KEY = 'auth_refresh'
 const AUTH_POSITION_KEY = 'auth_position'
 const SIGNED_OUT_KEY = 'signed_out'
 const LOCAL_SIGNED_OUT_KEY = 'kk_telegram_signed_out'
@@ -204,7 +205,11 @@ export function isTelegramSignedOut(): Promise<boolean> {
 	})
 }
 
-export function saveTelegramSession(token: string, position?: string): void {
+export function saveTelegramSession(
+	token: string,
+	position?: string,
+	refreshToken?: string,
+): void {
 	const storage = getTelegramWebApp()?.CloudStorage
 	clearTelegramSignedOut()
 	if (!storage) return
@@ -213,6 +218,9 @@ export function saveTelegramSession(token: string, position?: string): void {
 		storage.setItem(AUTH_TOKEN_KEY, token)
 		if (position) {
 			storage.setItem(AUTH_POSITION_KEY, position)
+		}
+		if (refreshToken) {
+			storage.setItem(AUTH_REFRESH_KEY, refreshToken)
 		}
 	} catch {
 		// CloudStorage may be unavailable on older clients
@@ -225,6 +233,7 @@ export function clearTelegramSession(): void {
 
 	try {
 		storage.removeItem(AUTH_TOKEN_KEY)
+		storage.removeItem(AUTH_REFRESH_KEY)
 		storage.removeItem(AUTH_POSITION_KEY)
 	} catch {
 		// ignore
@@ -234,6 +243,7 @@ export function clearTelegramSession(): void {
 export function loadTelegramSession(): Promise<{
 	token: string
 	position?: string
+	refreshToken?: string
 } | null> {
 	const storage = getTelegramWebApp()?.CloudStorage
 	if (!storage) return Promise.resolve(null)
@@ -242,11 +252,29 @@ export function loadTelegramSession(): Promise<{
 		try {
 			storage.getItem(AUTH_TOKEN_KEY, (error, token) => {
 				if (error || !token) {
-					resolve(null)
+					storage.getItem(AUTH_REFRESH_KEY, (refreshError, refreshToken) => {
+						if (refreshError || !refreshToken) {
+							resolve(null)
+							return
+						}
+						storage.getItem(AUTH_POSITION_KEY, (_posErr, position) => {
+							resolve({
+								token: '',
+								refreshToken,
+								position: position || undefined,
+							})
+						})
+					})
 					return
 				}
 				storage.getItem(AUTH_POSITION_KEY, (_posErr, position) => {
-					resolve({ token, position: position || undefined })
+					storage.getItem(AUTH_REFRESH_KEY, (_refreshErr, refreshToken) => {
+						resolve({
+							token,
+							position: position || undefined,
+							refreshToken: refreshToken || undefined,
+						})
+					})
 				})
 			})
 		} catch {

@@ -72,6 +72,7 @@ export interface TimeEntryFormData {
 
 export interface AuthResponse {
 	token: string
+	refreshToken?: string
 	position: string
 	isAdmin: boolean
 	username: string
@@ -80,6 +81,7 @@ export interface AuthResponse {
 
 export interface ApiError {
 	message: string
+	code?: string
 }
 
 export interface Announcement {

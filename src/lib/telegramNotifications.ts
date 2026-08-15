@@ -3,6 +3,7 @@
 // Note: Direct Telegram calls removed due to CORS - using backend proxy instead
 
 import { getAuthHeaders, getTokenOrNull } from "@/lib/auth";
+import { ensureAuthenticated } from "@/lib/api";
 
 interface TimeEntryData {
   user: {
@@ -45,7 +46,7 @@ Hours: ${data.hours}h${
 
   // Use backend proxy to avoid CORS issues
   try {
-    if (!getTokenOrNull()) {
+    if (!(await ensureAuthenticated()) || !getTokenOrNull()) {
       console.warn("❌ No auth token found");
       return;
     }
@@ -86,7 +87,7 @@ Hours: ${data.hours}h${
  */
 export async function testTelegram(): Promise<boolean> {
   try {
-    if (!getTokenOrNull()) {
+    if (!(await ensureAuthenticated()) || !getTokenOrNull()) {
       console.error("❌ No auth token found");
       return false;
     }

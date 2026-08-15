@@ -1,45 +1,64 @@
-import type { NextRequest } from 'next/server'
-import { NextResponse } from 'next/server'
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+function decodeJwtPayload(
+  token: string,
+): { exp?: number; isAdmin?: boolean } | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json) as { exp?: number; isAdmin?: boolean };
+  } catch {
+    return null;
+  }
+}
+
+function isAccessTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return true;
+  return Date.now() >= payload.exp * 1000;
+}
 
 export function middleware(request: NextRequest) {
-	const token = request.cookies.get('token')?.value
-	const { pathname } = request.nextUrl
+  const token = request.cookies.get("token")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
+  const { pathname } = request.nextUrl;
+  const accessValid = Boolean(token && !isAccessTokenExpired(token));
+  const canRestoreSession =
+    accessValid || Boolean(refreshToken) || Boolean(token);
 
-	// Protected routes (routes that require authentication)
-	const protectedRoutes = ['/dashboard', '/admin']
+  const protectedRoutes = ["/dashboard", "/admin"];
 
-	// If trying to access protected route without token
-	if (protectedRoutes.some(route => pathname.startsWith(route)) && !token) {
-		return NextResponse.redirect(new URL('/login', request.url))
-	}
+  if (
+    protectedRoutes.some((route) => pathname.startsWith(route)) &&
+    !canRestoreSession
+  ) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
-	// If trying to access login, register, or root page with token
-	if (
-		(pathname === '/login' || pathname === '/register' || pathname === '/') &&
-		token
-	) {
-		try {
-			// Decode JWT token to check user role
-			const payload = JSON.parse(atob(token.split('.')[1]))
+  if (
+    (pathname === "/login" || pathname === "/register" || pathname === "/") &&
+    accessValid &&
+    token
+  ) {
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      const response = NextResponse.next();
+      response.cookies.delete("token");
+      response.cookies.delete("refreshToken");
+      return response;
+    }
 
-			// Redirect based on user role
-			if (payload.isAdmin) {
-				return NextResponse.redirect(new URL('/admin', request.url))
-			} else {
-				return NextResponse.redirect(new URL('/dashboard', request.url))
-			}
-		} catch {
-			// If token is invalid, clear it and allow access to login
-			const response = NextResponse.next()
-			response.cookies.delete('token')
-			return response
-		}
-	}
+    if (payload.isAdmin) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
-	return NextResponse.next()
+  return NextResponse.next();
 }
 
-// Middleware qaysi path larda ishlashini ko'rsatish
 export const config = {
-	matcher: ['/', '/dashboard/:path*', '/admin/:path*', '/login', '/register'],
-}
+  matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/login", "/register"],
+};

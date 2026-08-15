@@ -16,6 +16,7 @@ import {
   getAnnouncements,
   getAllTimeEntries,
   logout,
+  ensureAuthenticated,
   registerWorker,
   updateAnnouncement,
 } from "@/lib/api";
@@ -107,12 +108,23 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!getTokenOrNull()) {
-      router.push("/login");
-      return;
+    let cancelled = false
+
+    async function boot() {
+      const ok = await ensureAuthenticated()
+      if (cancelled) return
+      if (!ok || !getTokenOrNull()) {
+        router.push("/login")
+        return
+      }
+      loadEntries()
+      loadAnnouncements()
     }
-    loadEntries();
-    loadAnnouncements();
+
+    void boot()
+    return () => {
+      cancelled = true
+    }
   }, [router, loadEntries, loadAnnouncements]);
 
   // Oy yoki yil o'zgarganda ma'lumotlarni yangilash

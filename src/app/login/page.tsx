@@ -7,18 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   attachTelegramAccount,
+  ensureAuthenticated,
   linkTelegramAccount,
   login,
   loginWithTelegram,
   logout,
 } from "@/lib/api";
+import { decodeToken } from "@/lib/auth";
 import {
   getTelegramInitData,
   isTelegramSignedOut,
-  loadTelegramSession,
-  saveTelegramSession,
 } from "@/lib/telegram";
-import Cookies from "js-cookie";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,37 +26,12 @@ import { toast } from "sonner";
 
 const MIN_ATTEMPT_INTERVAL_MS = 2000;
 
-interface JwtPayload {
-  exp?: number;
-  isAdmin?: boolean;
-}
-
-function decodeToken(token: string): JwtPayload {
-  return JSON.parse(atob(token.split(".")[1]));
-}
-
-function isTokenValid(token: string): boolean {
-  try {
-    const payload = decodeToken(token);
-    return Boolean(payload.exp && Date.now() < payload.exp * 1000);
-  } catch {
-    return false;
-  }
-}
-
 function redirectAfterAuth(token: string, router: ReturnType<typeof useRouter>) {
   const payload = decodeToken(token);
   if (!payload.exp || Date.now() >= payload.exp * 1000) {
     throw new Error("Token has expired");
   }
   router.push(payload.isAdmin ? "/admin" : "/dashboard");
-}
-
-function restoreLocalSession(token: string, position?: string) {
-  localStorage.setItem("token", token);
-  if (position) localStorage.setItem("position", position);
-  Cookies.set("token", token, { expires: 7, sameSite: "lax" });
-  saveTelegramSession(token, position);
 }
 
 function isTelegramConfigError(message: string): boolean {
@@ -122,23 +96,14 @@ export default function LoginPage() {
           }
         }
 
-        // 2) Fallback: restore token from Telegram CloudStorage (survives app kill)
-        if (isTelegram || initData) {
-          const cloudSession = await loadTelegramSession();
-          if (cancelled) return;
-          if (cloudSession?.token && isTokenValid(cloudSession.token)) {
-            restoreLocalSession(cloudSession.token, cloudSession.position);
-            // Best-effort re-link so next cold start can use initData login
-            if (initData) {
-              try {
-                await attachTelegramAccount(initData);
-              } catch {
-                // ignore — session restore is enough for now
-              }
-            }
+        // 2) Fallback: silently refresh an existing session (local / CloudStorage)
+        const restored = await ensureAuthenticated();
+        if (cancelled) return;
+        if (restored) {
+          const token = localStorage.getItem("token");
+          if (token) {
             toast.success("Welcome back");
-            redirectAfterAuth(cloudSession.token, router);
-            return;
+            redirectAfterAuth(token, router);
           }
         }
       } finally {
